@@ -83,13 +83,13 @@
 
 在 Thread 的构造方法里会将 Runnable 对象作为 target 参数传入 init 方法， 在 init 方法中再将target 赋给实例变量 target
 
-![[Pasted image 20210825140513.png]]
+![](../pics/Pasted image 20210825140513.png)
 
-![[Pasted image 20210825140600.png]]
+![](../pics/Pasted image 20210825140600.png)
 
 在线程启动后调用 run 方法时，如果发现 Runnable 类型的 target 参数不为 null，则调用其 run 方法
 
-![[Pasted image 20210825140645.png]]
+![](../pics/Pasted image 20210825140645.png)
 
 **小结**
 - 方式一是将线程和任务合并在了一起，方式二是将线程和任务分开了
@@ -117,20 +117,20 @@
 
 #### windows
 
-- ==tasklist== 查看进程
-- ==taskkill /f /pid== 强制终止进程
+- tasklist 查看进程
+- taskkill /f /pid 强制终止进程
 
 #### linux 
-- ==ps -fe== 查看所有进程
-- ==ps -fT -p  [ PID ]== 查看某个进程（PID）的所有线程
-- ==top==  动态查看所有进程
-- ==top -H -p [ PID ]== 动态 查看某个进程（PID）的所有线程
+-  ps -fe 查看所有进程
+-  ps -fT -p  [ PID ]  查看某个进程（PID）的所有线程
+-  top 动态查看所有进程
+- top -H -p [ PID ] 动态 查看某个进程（PID）的所有线程
 
 #### Java
 
-- ==jps -l== 查看所有 Java 进程
-- ==jstack [ PID ]== 查看某个 Java 进程的所有线程状态
-- ==jconsole== 来查看某个 Java 进程中线程的运行情况（图形界面）
+- jps -l 查看所有 Java 进程
+- jstack [ PID ]  查看某个 Java 进程的所有线程状态
+- jconsole 来查看某个 Java 进程中线程的运行情况（图形界面）
 
 jconsole 远程监控配置
 
