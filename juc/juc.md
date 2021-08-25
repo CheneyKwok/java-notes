@@ -83,13 +83,13 @@
 
 在 Thread 的构造方法里会将 Runnable 对象作为 target 参数传入 init 方法， 在 init 方法中再将target 赋给实例变量 target
 
-![](../pics/Pasted image 20210825140513.png)
+![](../pics/20210825140513.png)
 
-![](../pics/Pasted image 20210825140600.png)
+![](../pics/20210825140600.png)
 
 在线程启动后调用 run 方法时，如果发现 Runnable 类型的 target 参数不为 null，则调用其 run 方法
 
-![](../pics/Pasted image 20210825140645.png)
+![](../pics/20210825140645.png)
 
 **小结**
 - 方式一是将线程和任务合并在了一起，方式二是将线程和任务分开了
