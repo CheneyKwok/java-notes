@@ -108,7 +108,7 @@
 	});  
 	Thread t = new Thread(task, "t");  
 	t.start();  
-  
+
 	log.debug("res: {}", task.get());
 
 ```
@@ -120,7 +120,7 @@
 - tasklist 查看进程
 - taskkill /f /pid 强制终止进程
 
-#### linux 
+#### linux
 -  ps -fe 查看所有进程
 -  ps -fT -p  [ PID ]  查看某个进程（PID）的所有线程
 -  top 动态查看所有进程
@@ -135,11 +135,11 @@
 jconsole 远程监控配置
 
 ```linux
-java 
--Djava.rmi.server.hostname=`ip地址` 
--Dcom.sun.management.jmxremote 
--Dcom.sun.management.jmxremote.port=`连接端口` 
--Dcom.sun.management.jmxremote.ssl=是否安全连接 
+java
+-Djava.rmi.server.hostname=`ip地址`
+-Dcom.sun.management.jmxremote
+-Dcom.sun.management.jmxremote.port=`连接端口`
+-Dcom.sun.management.jmxremote.ssl=是否安全连接
 -Dcom.sun.management.jmxremote.authenticate=是否认证 java类
 ```
 
@@ -148,7 +148,7 @@ java
 Java Virtual Machine Stacks ( Java 虚拟机栈 )
 
 JVM 由堆、栈、方法区组成，其中栈内存是给线程用的。每个线程启动后，虚拟机就会为其分配一块栈内存。
-- 每个栈由多个栈帧( Frame ) 组成，对应着每次方法调用能时所占用的内存 
+- 每个栈由多个栈帧( Frame ) 组成，对应着每次方法调用能时所占用的内存
 -  每个线程只能有一个活动栈帧吗，对应着当前正在执行的方法
 
 ### 线程上下文切换 ( Thread Context Switch )
@@ -162,3 +162,25 @@ JVM 由堆、栈、方法区组成，其中栈内存是给线程用的。每个�
 当 Context Switch 发生时，需要由操作系统保存当前线程的状态，并恢复另一个线程的状态，Java 中对应的概念就是程序计数器 ( Program Counter Register )，它的作用是记住下一条 jvm 指令的地址，是线程私有的
 - 状态包括程序计数器、虚拟机栈中每个栈帧的信息，如局部变量、操作数栈、返回地址等
 - Context Switch 频繁发生会影响性能
+
+### 常见方法
+
+| 方法名 | 功能说明 | 注意 |
+| :----: | :-----: | :--: |
+| start() | 启动一个新线程，在新的线程运行run方法中的代码 | start 方法只是让线程进入就绪，里面的代码不一定立刻就运行 ( cpu 的时间片还没分给它 )。每个线程对象的 start 方法只能调用一次，如果调用了多次会出现 IllegalThreadStateException
+| run() | 新线程启动后会调用的方法 | 如果在构造 Thread 对象时传递了 Runnable 参数， 则线程启动后会调用 Runnable 中的 run 方法，否则默认不执行任何操作。但可以创建 Thread 的子类对象来覆盖默认行为
+| join() | 等待线程运行结束 |
+| join(long n) | 等待线程运行结束，最多等待 n 毫秒|
+| getId() | 获取线程长整型的 id | id 唯一
+| getName() | 获取线程名
+| setName(String) | 修改线程名
+| getPriority() | 获取线程优先级
+| setPriority(int) | 修改线程优先级 | Java 中规定线程优先级是 1-10 的整数，较大的优先级能提高该线程被 CPU 调度的机率
+| getState() | 获取线程状态 | Java 中的线程状态使用 6 个枚举表示， 分别分 NEW、Runnable、BLOCKED、WAITING、TIMED_WAITING、TERMINATED
+| isInterrupted() | 判断是否被打断 | 不会清除**打断标记**
+| isAlive() | 线程是否存活 (还没有运行完毕 )
+| interrupt() | 打断线程 | 如果被打断的线程正在 sleep、wait、join， 会导致打断的线程抛出 InterruptedException， 并清除打断标记；如果打断正在运行的线程，则会设置打断标记；park 的线程被打断，也会清除打断标记
+|interrupted() | 判断当前线程是否被打断 | 会清除打断标记
+| currentThread() | 获取当前正在执行的线程
+| sleep(long n) | 让当前线程休眠 n 毫秒，休眠时让出 cpu 的时间片给其他线程
+| yield() | 提示线程调度器让出当前线程对 cpu 的使用 | 主要是为了测试和调试
