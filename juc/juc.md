@@ -83,13 +83,28 @@
 
 在 Thread 的构造方法里会将 Runnable 对象作为 target 参数传入 init 方法， 在 init 方法中再将target 赋给实例变量 target
 
-![](../pics/20210825140513.png)
+```java
+        /* What will be run. */
+        private Runnable target;
+```
 
-![](../pics/20210825140600.png)
+```java
+	private void init(ThreadGroup g, Runnable target,...){
+		...
+		this.target = target;
+		...
+	}
+```
 
 在线程启动后调用 run 方法时，如果发现 Runnable 类型的 target 参数不为 null，则调用其 run 方法
 
-![](../pics/20210825140645.png)
+```java
+	public void run() {
+        if (target != null) {
+            target.run();
+        }
+    }
+```
 
 **小结**
 - 方式一是将线程和任务合并在了一起，方式二是将线程和任务分开了
@@ -204,6 +219,26 @@ JVM 由堆、栈、方法区组成，其中栈内存是给线程用的。每个�
 - yield 虽然会让当前线程进入就绪状态，但是可能会被任务调度器再一次调度，因为任务调度器在分时间片时会考虑就绪状态。而 sleep 是让线程进入阻塞状态，不会再次被调度
 
 ### 线程优先级
+
+- 优先级范围： 
+
+```java 
+
+    /**
+     * The minimum priority that a thread can have.
+     */
+    public final static int MIN_PRIORITY = 1;
+
+    /**
+     * The default priority that is assigned to a thread.
+     */
+    public final static int NORM_PRIORITY = 5;
+
+    /**
+     * The maximum priority that a thread can have.
+     */
+    public final static int MAX_PRIORITY = 10;
+```
 
 - 线程优先级会提示( hint ) 调度器优先调度该线程，但它仅仅是一个提示，调度器可以忽略
 - 如果 cpu 比较忙，那么高优先级的线程会获得更多的时间片，但是 cpu 闲时，优先级几乎没作用
