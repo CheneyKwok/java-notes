@@ -1,4 +1,4 @@
-package juc;
+package juc.code;
 
 import lombok.extern.slf4j.Slf4j;
 
