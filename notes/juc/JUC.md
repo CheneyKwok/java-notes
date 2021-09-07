@@ -312,4 +312,24 @@ while(true){
 
 - 用 sleep 行不行，为什么
 - 用 join， 加在 t1.start() 之后即可
+
+## interrupt 方法详解
+
+### 打断 slepp、wait、join 线程
+
+这几个方法都会让线程进入阻塞状态，线程被打断后打断标志会置为 true
+
+- 打断 sleep 线程会清空打断状态，以 sleep 为例
+
+ ```java
+ private static void test() throws Exception {
+     Thread t1 = new Thread(() -> {
+         sleep(1);
+     }, "t1");
+     t1.start();
+     sleep(0.5);
+     t1.interrupt();
+     log.debug("打断状态： {}", t1.isInterrupted());
+ }
+ ```
   
