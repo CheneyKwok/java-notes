@@ -315,11 +315,13 @@ while(true){
 
 ## interrupt 方法详解
 
+作用：打断当前线程，线程被打断后打断标志会置为 true
+
 ### 打断 slepp、wait、join 线程
 
-这几个方法都会让线程进入阻塞状态，线程被打断后打断标志会置为 true
+这几个方法都会让线程进入阻塞状态
 
-- 打断 sleep 线程会清空打断状态，以 sleep 为例
+- 打断阻塞线程会清空打断标记再次置为 false，以 sleep 为例
 
  ```java
  private static void test() throws Exception {
@@ -332,4 +334,32 @@ while(true){
      log.debug("打断状态： {}", t1.isInterrupted());
  }
  ```
+
+out：
+
+```Java
+[main] DEBUG juc.code.InterruptDemo - 打断状态： false
+```
+
+### 打断正常线程
+
+打断正常线程不会清楚打断标记，仅将打断标志置为 true
+
+```Java
+ public static void main(String[] args) throws InterruptedException {
+        Thread t = new Thread(() -> {
+            while (true) {
+                if (Thread.currentThread().isInterrupted())
+                    break;
+            }
+        });
+        t.start();
+        TimeUnit.SECONDS.sleep(1);
+        log.info("interrupt");
+        t.interrupt();
+
+    }
+```
+
+通过判断打断标志来判断是否要终止线程
   
