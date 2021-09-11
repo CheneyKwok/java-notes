@@ -425,3 +425,102 @@ class TwoPhaseTermination {
     }
 }
 ```
+
+### 打断 park 线程
+
+使用 isInterrupted() 打断 park 线程，不会清除打断标记
+
+```java
+ public static void main(String[] args) throws InterruptedException {
+        Thread t = new Thread(() -> {
+            log.info("park.....");
+            LockSupport.park();
+            log.info("un park......");
+            log.info("打断状态：{}", Thread.currentThread().isInterrupted());
+        });
+
+        t.start();
+        TimeUnit.SECONDS.sleep(1);
+        t.interrupt();
+    }
+```
+
+out:
+
+```java
+[Thread-0] INFO juc.code.InterruptParkDemo - park.....
+[Thread-0] INFO juc.code.InterruptParkDemo - un park......
+[Thread-0] INFO juc.code.InterruptParkDemo - 打断状态：true
+```
+
+打断标记为 true 的状态下，park 会失效
+
+```java
+ public static void main(String[] args) throws InterruptedException {
+        Thread t = new Thread(() -> {
+            log.info("park.....");
+            LockSupport.park();
+            log.info("un park......");
+            log.info("打断状态：{}", Thread.currentThread().isInterrupted());
+            LockSupport.park();
+            log.info("un park......");
+        });
+
+        t.start();
+        TimeUnit.SECONDS.sleep(1);
+        t.interrupt();
+    }
+```
+
+```java
+[Thread-0] INFO juc.code.InterruptParkDemo - park.....
+[Thread-0] INFO juc.code.InterruptParkDemo - un park......
+[Thread-0] INFO juc.code.InterruptParkDemo - 打断状态：true
+[Thread-0] INFO juc.code.InterruptParkDemo - un park......
+```
+可以使用 **Thread.interrupted()** 清楚打断状态
+
+## 不推荐的方法
+
+还有一些不推荐使用的方法，这些方法已过时，容易破环同步代码块，造成线程死锁
+
+| 方法名 | 功能说明 |
+| ----- | --------|
+| stop() | 停止线程运行 |
+| suspend() | 挂起（暂停）线程运行 |
+| resume() | 恢复线程运行 |
+
+## 主线程与守护线程
+
+默认情况下，Java 进程需要等待所有线程都运行结束，才会结束。
+有一种特殊的线程叫做守护线程，只要非守护线程运行结束了，即使守护线程的代码没有执行完，也会强制结束。
+
+```java
+
+ public static void main(String[] args) {
+        log.info("开始运行...");
+        Thread t1 = new Thread(() -> {
+            log.info("开始运行...");
+            sleep(2);
+            log.info("运行结束...");
+        }, "daemon");
+        // 设置该线程为守护线程
+        t1.setDaemon(true);
+        t1.start();
+        sleep(1);
+        log.info("运行结束...");
+    }
+```
+
+out:
+
+```java
+[main] INFO juc.code.InterruptParkDemo - 开始运行...
+[daemon] INFO juc.code.InterruptParkDemo - 开始运行...
+[main] INFO juc.code.InterruptParkDemo - 运行结束...
+```
+
+### 注意
+
+- 垃圾回收器就是一种守护线程
+- Tomcat 中的Acceptor 和 Poller 线程都是守护线程，所以 Tomcat 接收到 shutdown 命令后，不会等待她们处理完当前请求 
