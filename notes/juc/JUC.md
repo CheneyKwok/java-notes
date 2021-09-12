@@ -523,4 +523,143 @@ out:
 ### 注意
 
 - 垃圾回收器就是一种守护线程
-- Tomcat 中的Acceptor 和 Poller 线程都是守护线程，所以 Tomcat 接收到 shutdown 命令后，不会等待她们处理完当前请求 
+- Tomcat 中的Acceptor 和 Poller 线程都是守护线程，所以 Tomcat 接收到 shutdown 命令后，不会等待她们处理完当前请求
+  
+## 五种状态
+
+这是从操作系统层面来描述的
+
+![](../../pics/线程五种状态-操作系统.png)
+
+- 【初始状态】仅是在语言层面创建了线程对象，还未与操作系统线程关联
+- 【可运行状态】(就绪状态)指该线程已经被创建(与操作系统相关联)，可由 cpu 调度执行
+- 【运行状态】指获取了 CPU 时间片运行中的状态
+  - 当 CPU 时间片用完，会从【运行状态】 转换至【可运行状态】，会导致线程的上下文切换
+- 【阻塞状态】
+  - 如果调用了阻塞 API，如  BIO 读写文件，这是该线程实际不会用到 CPU，会导致线程上下文切换，进入【阻塞状态】
+  - 等 BIO 结束，会由操作系统唤醒阻塞的线程，转换至【可运行状态】
+  - 与【可运行状态】的区别是，对【阻塞状态】的线程来说只要它们一直不被唤醒，调度器就是一直不会考虑调度它们
+- 【终止状态】表示线程已经执行完毕，生命周期已经结束，不会再转换为其他状态
+
+## 六种状态
+
+这是从 Java API 层面来描述
+
+根据 Thread.State 枚举，分为六种状态：
+
+![](../../pics/20210912151539.png)
+
+- 【NEW】线程刚被创建，但是还没有调用 start() 方法
+- 【RUNNABLE】当调用了 start() 方法后，注意 **Java API** 层面的 RUNNABLE 状态涵盖了**操作系统** 层面的【可运行状态】、【运行状态】、【阻塞状态】
+   (由于 BIO 导致的线程阻塞，在 Java 里无法区分，仍然认为是可运行)
+- 【BLOCKED】、【WAITING】、【TIMED_WAITING】都是 JavaApI 层面对【阻塞状态】的细分，后面会在状态转换一节详述
+- 【TERMINATED】当线程代码执行结束
+
+```java
+ public static void main(String[] args) {
+
+        // NEW
+        Thread t1 = new Thread(() -> log.info("running..."), "t1");
+
+        // RUNNABLE
+        Thread t2 = new Thread(() -> {
+            while (true){}
+        }, "t2");
+        t2.start();
+
+        // TERMINATED
+        Thread t3 = new Thread(() -> log.info("running..."), "t3");
+        t3.start();
+
+        // TIMED_WAITING
+        Thread t4 = new Thread(() -> {
+            synchronized (ThreadStateDemo.class) {
+                sleep(100000);
+            }
+        });
+        t4.start();
+
+        // WAITING
+        Thread t5 = new Thread(() -> {
+            try {
+                t2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }, "t5");
+        t5.start();
+
+        // BLOCKED
+        Thread t6 = new Thread(() -> {
+            synchronized (ThreadStateDemo.class) {
+                sleep(1000000);
+            }
+        }, "t6");
+        t6.start();
+
+        sleep(500);
+
+        log.info("t1 state: {}", t1.getState());
+        log.info("t2 state: {}", t2.getState());
+        log.info("t3 state: {}", t3.getState());
+        log.info("t4 state: {}", t4.getState());
+        log.info("t5 state: {}", t5.getState());
+        log.info("t6 state: {}", t6.getState());
+    }
+```
+
+out：
+
+```java
+[main] INFO juc.code.ThreadStateDemo - t1 state: NEW
+[main] INFO juc.code.ThreadStateDemo - t2 state: RUNNABLE
+[main] INFO juc.code.ThreadStateDemo - t3 state: TERMINATED
+[main] INFO juc.code.ThreadStateDemo - t4 state: TIMED_WAITING
+[main] INFO juc.code.ThreadStateDemo - t5 state: WAITING
+[main] INFO juc.code.ThreadStateDemo - t6 state: BLOCKED
+```
+
+## 案例：烧水泡茶
+
+![](../../pics/20210912204458.png)
+
+### 解法一：join
+
+```java
+public static void main(String[] args) {
+        Thread t1 = new Thread(() -> {
+            log.info("洗水壶");
+            sleep(1);
+            log.info("烧开水");
+            sleep(5);
+        }, "t1");
+
+        Thread t2 = new Thread(() -> {
+            log.info("洗茶壶");
+            sleep(1);
+            log.info("洗茶杯");
+            sleep(2);
+            log.info("拿茶叶");
+            sleep(1);
+            try {
+                t1.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            log.info("泡茶");
+        }, "t2");
+        t1.start();
+        t2.start();
+    }
+```
+
+out：
+
+```java
+[t1] INFO Case1 - 洗水壶
+[t2] INFO Case1 - 洗茶壶
+[t1] INFO Case1 - 烧开水
+[t2] INFO Case1 - 洗茶杯
+[t2] INFO Case1 - 拿茶叶
+[t2] INFO Case1 - 泡茶
+```
