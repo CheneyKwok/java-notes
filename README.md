@@ -1,5 +1,9 @@
 # java-notes
 
 ## :lock: [JUC 多线程&并发](https://github.com/CheneyKwok/java-notes/blob/main/notes/juc/JUC.md)
+
 ## :pizza: [Redis](https://github.com/CheneyKwok/java-notes/blob/main/notes/redis/redis.md)
- 
+
+## :computer: [Netty]()
+
+- [NIO](https://github.com/CheneyKwok/java-notes/blob/main/notes/netty/nio.md)
