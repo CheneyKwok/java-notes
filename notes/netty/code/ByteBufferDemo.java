@@ -12,12 +12,12 @@ public class ByteBufferDemo {
 
     public static void main(String[] args) {
         // FileChannel
-        // 获取方式：1. 输入输出流 2. RandomAccessFile
+        // 获取方式：1. 输入输出流 2. new RandomAccessFile("data.txt", "r").getChannel()
         // 将文件写入 channel
         try (FileChannel channel = new FileInputStream("data.txt").getChannel()) {
             // 申请缓冲区
             ByteBuffer buffer = ByteBuffer.allocate(10);
-            while (true){
+            while (true) {
                 //将 channel 中的数据读出，向 buffer 写入
                 int len = channel.read(buffer);
                 if (len == -1) // 读完
@@ -28,7 +28,7 @@ public class ByteBufferDemo {
                 // 是否还有剩余未读数据
                 while (buffer.hasRemaining()) {
                     byte b = buffer.get();
-                    log.info("read byte：{}", (char)b);
+                    log.info("read byte：{}", (char) b);
                 }
                 // 切换至写入模式
                 buffer.clear();

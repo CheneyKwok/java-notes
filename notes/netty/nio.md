@@ -61,4 +61,82 @@ selector 的作用就是配置一个线程来管理多个 channel，获取这些
 
 调用 selector 的 select() 会阻塞直到 channel 发生了读写就绪事件，这些事件发生，select 方法就会返回这些事件交给 thread 处理
 
-## 
+## ByteBuffer
+
+### 使用
+
+1. 向 buffer 写入数据，例如调用 channel.read(buffer)
+2. 调用 flip() 切换至读模式
+3. 从 buffer 读取数据，例如调用 buffer.get()
+4. 调用 clear() 或 compact() 切换至写模式
+5. 重复 1-4 步骤
+
+例如有一文件 data.txt，内容为
+
+```java
+1234567890abc
+```
+
+使用 FileChannel 来读取文件内容
+
+```java
+ public static void main(String[] args) {
+        // FileChannel
+        // 获取方式：1. 输入输出流 2. new RandomAccessFile("data.txt", "r").getChannel()
+        // 将文件写入 channel
+        try (FileChannel channel = new FileInputStream("data.txt").getChannel()) {
+            // 申请缓冲区
+            ByteBuffer buffer = ByteBuffer.allocate(10);
+            while (true) {
+                //将 channel 中的数据读出，向 buffer 写入
+                int len = channel.read(buffer);
+                if (len == -1) // 读完
+                    break;
+                log.info(" read byte count：{}", len);
+                // 切换至读出模式
+                buffer.flip();
+                // 是否还有剩余未读数据
+                while (buffer.hasRemaining()) {
+                    byte b = buffer.get();
+                    log.info("read byte：{}", (char) b);
+                }
+                // 切换至写入模式
+                buffer.clear();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+## ByteBuffer 结构
+
+ByteBuffer 有以下重要属性
+
+- capacity
+- position
+- limit
+
+初始化时
+
+![](../../pics/0021.png)
+
+写模式下，position 是写入位置，limit 等于容量，下图表示写入了 4 个节点的状态
+
+![](../../pics/0018.png)
+
+flip 动作发生后，position 切换为读取位置，limit 切换为读取限制
+
+![](../../pics/0019.png)
+
+读取 4 个字节后
+
+![](../../pics/0020.png)
+
+clear 动作发生后
+
+![](../../pics/0021.png)
+
+compact() 方法是把未读完的部分向前压缩，然后切换至读取模式
+
+![](../../pics/0022.png)
