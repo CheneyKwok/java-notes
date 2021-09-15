@@ -1,4 +1,4 @@
-package juc.code;
+package juc.code.synchronizedkeyword;
 
 import lombok.extern.slf4j.Slf4j;
 
