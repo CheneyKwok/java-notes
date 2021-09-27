@@ -231,6 +231,8 @@ while(true){
 
 ## join方法详解
 
+join 方法会让当前线程 (如 main) 去判断调用 join() 的线程对象(如 t.join() 的 t)是否 Runnable，如果正在 Runnable，那么 main 线程会进入 WAITING，直到阻塞时间到或者被 notify。t 线程执行完毕时，jvm 会调用 lock.notify_all(thread) 唤醒阻塞在 t 对象监视器上的所有线程，则 main 被唤醒继续执行
+
 ### 为什么需要join
 
 下面的代码执行，打印 r 是什么？

@@ -16,16 +16,21 @@ public class JoinDemo {
         log.debug("start");
         Thread t1 = new Thread(() -> {
             log.debug("start");
-            try {
-                TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                TimeUnit.SECONDS.sleep(1);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
             log.debug("end");
             r = 10;
-        });
+        },"t1");
 
         t1.start();
+        try {
+            t1.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         log.debug("res: {}", r);
         log.debug("end");
     }
