@@ -23,6 +23,8 @@
 hs_err_pid*
 
 .idea
+*.iml
+.vscode
 .obsidian
 .trash
 /target
