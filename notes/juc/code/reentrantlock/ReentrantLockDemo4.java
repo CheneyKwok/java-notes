@@ -1,64 +1,72 @@
-package juc.code.waitnotify;
+package juc.code.reentrantlock;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static juc.code.Sleeper.sleep;
 
 
 @Slf4j
-public class WaitNotifyDemo3 {
+public class ReentrantLockDemo4 {
 
-    static final Object room = new Object();
     static boolean hasCigarette = false;
     static boolean hasTakeout = false;
+    static ReentrantLock lock = new ReentrantLock();
+    static Condition cigaretteCondition = lock.newCondition();
+    static Condition takeoutCondition = lock.newCondition();
+
 
     public static void main(String[] args) {
         new Thread(() -> {
-            synchronized (room) {
-                log.debug("有烟没？[{}]", hasCigarette);
-                if (!hasCigarette) {
+            lock.lock();
+
+            try {
+                while (!hasCigarette) {
                     log.debug("没烟，先歇会！");
                     try {
-                        room.wait();
+                        cigaretteCondition.await();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
-                log.debug("有烟没？[{}]", hasCigarette);
-                if (hasCigarette) {
-                    log.debug("可以开始干活了");
-                } else {
-                    log.debug("没干成活...");
-                }
+                log.debug("可以开始干活了");
+            } finally {
+                lock.unlock();
             }
+            log.debug("有烟没？[{}]", hasCigarette);
+
         }, "小南").start();
 
         new Thread(() -> {
-            synchronized (room) {
+            lock.lock();
+            try {
                 log.debug("外卖送到没？[{}]", hasTakeout);
-                if (!hasTakeout) {
+                while (!hasTakeout) {
                     log.debug("没外卖，先歇会！");
                     try {
-                        room.wait();
+                        takeoutCondition.await();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                 }
-                log.debug("外卖送到没？[{}]", hasTakeout);
-                if (hasTakeout) {
-                    log.debug("可以开始干活了");
-                } else {
-                    log.debug("没干成活...");
-                }
+                log.debug("可以开始干活了");
+            } finally {
+                lock.unlock();
             }
+
         }, "小女").start();
 
         sleep(1);
         new Thread(() -> {
-            synchronized (room) {
+            lock.lock();
+            try {
                 hasTakeout = true;
                 log.debug("外卖到了噢！");
-                room.notifyAll();
+                takeoutCondition.signal();
+            } finally {
+                lock.unlock();
             }
         }, "送外卖的").start();
     }
