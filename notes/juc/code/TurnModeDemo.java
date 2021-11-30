@@ -6,10 +6,12 @@ import lombok.extern.slf4j.Slf4j;
 public class TurnModeDemo {
 
     public static void main(String[] args) {
-        WaitNotify wn = new WaitNotify(1, 5);
-        new Thread(() -> wn.print("a", 1, 2)).start();
-        new Thread(() -> wn.print("b", 2, 3)).start();
-        new Thread(() -> wn.print("c", 3, 1)).start();
+
+        WaitNotify syncWaitNotify = new WaitNotify(1, 5);
+        new Thread(() -> syncWaitNotify.print("a", 1, 2)).start();
+        new Thread(() -> syncWaitNotify.print("b", 2, 3)).start();
+        new Thread(() -> syncWaitNotify.print("c", 3, 2)).start();
+
     }
 }
 
@@ -47,7 +49,7 @@ class WaitNotify{
                     }
                 }
                 System.out.print(str);
-                this.flag = nextFlag;
+                flag = nextFlag;
                 this.notifyAll();
             }
         }
