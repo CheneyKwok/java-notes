@@ -8,7 +8,7 @@ non-blocking io 非阻塞 IO
 
 channel 有点类似于stream，它就是读写数据的双向通道，可以从 channel 将数据读入 buffer，也可以从 buffer 将数据读入 channel，而之前的 stream 要么是输入，要么是输出，channel 比 straam 更为底层
 
-![](../../pics/20210912143843.png)
+![](../../images/20210912143843.png)
 
 常见的 Channel：
 
@@ -36,7 +36,7 @@ selector 单从字面意思不好意思理解，需要结合服务器的设计�
 
 #### 多线程版设计
 
-![](../../pics/20210912145302.png)
+![](../../images/20210912145302.png)
 
 **多线程版的缺点：**
 
@@ -46,7 +46,7 @@ selector 单从字面意思不好意思理解，需要结合服务器的设计�
 
 #### 线程池版设计
 
-![](../../pics/20210912145533.png)
+![](../../images/20210912145533.png)
 
 **线程池版缺点：**
 
@@ -57,7 +57,7 @@ selector 单从字面意思不好意思理解，需要结合服务器的设计�
 
 selector 的作用就是配置一个线程来管理多个 channel，获取这些 channel 上发生的事件，这些 channel 工作在非阻塞模式下，不会让线程吊死在一个 channel 上。适合连接数特别多，但流量低的场景 (low traffic)
 
-![](../../pics/20210912150425.png)
+![](../../images/20210912150425.png)
 
 调用 selector 的 select() 会阻塞直到 channel 发生了读写就绪事件，这些事件发生，select 方法就会返回这些事件交给 thread 处理
 
@@ -119,24 +119,24 @@ ByteBuffer 有以下重要属性
 
 初始化时
 
-![](../../pics/0021.png)
+![](../../images/0021.png)
 
 写模式下，position 是写入位置，limit 等于容量，下图表示写入了 4 个节点的状态
 
-![](../../pics/0018.png)
+![](../../images/0018.png)
 
 flip 动作发生后，position 切换为读取位置，limit 切换为读取限制
 
-![](../../pics/0019.png)
+![](../../images/0019.png)
 
 读取 4 个字节后
 
-![](../../pics/0020.png)
+![](../../images/0020.png)
 
 clear 动作发生后
 
-![](../../pics/0021.png)
+![](../../images/0021.png)
 
 compact() 方法是把未读完的部分向前压缩，然后切换至读取模式
 
-![](../../pics/0022.png)
+![](../../images/0022.png)
