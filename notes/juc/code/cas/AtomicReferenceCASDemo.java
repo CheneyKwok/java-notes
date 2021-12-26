@@ -1,4 +1,4 @@
-package juc.code;
+package juc.code.cas;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -34,7 +34,6 @@ class DecimalAccountCAS implements DecimalAccount {
                 break;
             }
         }
-
     }
 }
 

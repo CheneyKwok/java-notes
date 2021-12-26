@@ -1,4 +1,4 @@
-package juc.code;
+package juc.code.cas;
 
 import java.util.ArrayList;
 import java.util.List;
