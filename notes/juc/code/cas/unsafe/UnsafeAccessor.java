@@ -1,4 +1,4 @@
-package juc.code.unsafe;
+package juc.code.cas.unsafe;
 
 import sun.misc.Unsafe;
 
