@@ -8,6 +8,7 @@
 - [**共享模型之内存**](https://github.com/CheneyKwok/java-notes/blob/main/notes/juc/共享模型之内存.md)
 - [**共享模型之无锁**](https://github.com/CheneyKwok/java-notes/blob/main/notes/juc/共享模型之无锁.md)
 - [**共享模型之不可变**](https://github.com/CheneyKwok/java-notes/blob/main/notes/juc/共享模型之不可变.md)
+- [**共享模型之工具**](https://github.com/CheneyKwok/java-notes/blob/main/notes/juc/共享模型之工具.md)
 
 ## :coffee: [JVM]()
 
