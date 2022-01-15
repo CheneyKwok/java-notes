@@ -1,4 +1,4 @@
-package juc.code.tool;
+package juc.code.aqs;
 
 import juc.code.Sleeper;
 import lombok.extern.slf4j.Slf4j;

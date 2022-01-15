@@ -9,7 +9,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class ReentrantReadWriteLockDemo {
 
     public static void main(String[] args) {
-        DataContainer container = new DataContainer();
+        DataContainer container = new DataContainer(0);
         // 读-写
 //        new Thread(container::read, "t1").start();
 //        new Thread(() -> container.write(1), "t2").start();
@@ -32,6 +32,10 @@ class DataContainer {
     private ReentrantReadWriteLock rw = new ReentrantReadWriteLock();
     private ReentrantReadWriteLock.ReadLock r = rw.readLock();
     private ReentrantReadWriteLock.WriteLock w = rw.writeLock();
+
+    public DataContainer(Object data) {
+        this.data = data;
+    }
 
     public Object read() {
         log.info("获取读锁...");
