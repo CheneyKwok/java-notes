@@ -1,0 +1,6 @@
+D:\GitHub\java-notes\design-patterns\src\main\java\com\gzc\singleton\ThreadSafeLazyIvoryTower.java
+D:\GitHub\java-notes\design-patterns\src\main\java\com\gzc\singleton\EnumIvoryTower.java
+D:\GitHub\java-notes\design-patterns\src\main\java\com\gzc\singleton\ThreadUnsafeLazyIvoryTower.java
+D:\GitHub\java-notes\design-patterns\src\main\java\com\gzc\singleton\InitializingOnInnerClassLazyIvoryTower.java
+D:\GitHub\java-notes\design-patterns\src\main\java\com\gzc\singleton\IvoryTower.java
+D:\GitHub\java-notes\design-patterns\src\main\java\com\gzc\singleton\ThreadSafeDoubleCheckLockingLazyIvoryTower.java
