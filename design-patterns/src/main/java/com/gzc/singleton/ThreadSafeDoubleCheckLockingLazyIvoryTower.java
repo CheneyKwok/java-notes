@@ -13,9 +13,7 @@ public final class ThreadSafeDoubleCheckLockingLazyIvoryTower {
 
     private ThreadSafeDoubleCheckLockingLazyIvoryTower() {
         // 防止通过反射调用实例化
-        if (INSTANCE == null) {
-            INSTANCE = this;
-        } else {
+        if (INSTANCE != null) {
             throw new IllegalStateException("Already initialized");
         }
     }

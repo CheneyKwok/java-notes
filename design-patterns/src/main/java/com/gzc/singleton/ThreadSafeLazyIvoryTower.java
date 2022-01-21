@@ -10,6 +10,10 @@ public class ThreadSafeLazyIvoryTower {
     private static ThreadSafeLazyIvoryTower INSTANCE;
 
     private ThreadSafeLazyIvoryTower() {
+        // 防止通过反射调用实例化
+        if (INSTANCE != null) {
+            throw new IllegalStateException("Already initialized");
+        }
     }
 
     public static synchronized ThreadSafeLazyIvoryTower getInstance() {
