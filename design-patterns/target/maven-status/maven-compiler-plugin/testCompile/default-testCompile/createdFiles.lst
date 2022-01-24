@@ -1,7 +1,0 @@
-com\gzc\singleton\ThreadUnsafeLazyIvoryTowerTest.class
-com\gzc\singleton\InitializingOnInnerClassLazyIvoryTowerTest.class
-com\gzc\singleton\EnumIvoryTowerTest.class
-com\gzc\singleton\IvoryTowerTest.class
-com\gzc\singleton\ThreadSafeDoubleCheckLockingLazyIvoryTowerTest.class
-com\gzc\singleton\SingletonTest.class
-com\gzc\singleton\ThreadSafeLazyIvoryTowerTest.class
