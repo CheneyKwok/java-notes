@@ -25,7 +25,7 @@
 - [**概述**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%A6%82%E8%BF%B0)
 - [**UML图**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#uml-%E5%9B%BE)
 - [**软件设计原则**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E8%BD%AF%E4%BB%B6%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99)
-- **创建者模式**
+- [**创建型模式**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E5%88%9B%E5%BB%BA%E8%80%85%E6%A8%A1%E5%BC%8F)
   - [**单例模式**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F)
   - [**简单工厂模式**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E7%AE%80%E5%8D%95%E5%B7%A5%E5%8E%82%E6%A8%A1%E5%BC%8F)
   - [**工厂方法模式**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E5%B7%A5%E5%8E%82%E6%96%B9%E6%B3%95%E6%A8%A1%E5%BC%8F)
