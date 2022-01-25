@@ -2,7 +2,7 @@ package com.gzc.synchronizedkeyword;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static juc.code.Sleeper.sleep;
+import static com.gzc.Sleeper.sleep;
 
 @Slf4j
 public class SynchronizedLock8 {

@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.atomic.AtomicStampedReference;
 
-import static juc.code.Sleeper.sleep;
+import static com.gzc.Sleeper.sleep;
 
 @Slf4j
 public class AtomicStampedReferenceDemo {

@@ -1,6 +1,6 @@
 package com.gzc.metaspace;
 
-import juc.code.Sleeper;
+import com.gzc.Sleeper;
 
 public class Demo2 {
 

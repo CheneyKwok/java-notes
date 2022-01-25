@@ -6,7 +6,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static juc.code.Sleeper.sleep;
+import static com.gzc.Sleeper.sleep;
 
 @Slf4j
 public class CountDownLatchDemo1 {

@@ -2,7 +2,7 @@ package com.gzc.waitnotify;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static juc.code.Sleeper.sleep;
+import static com.gzc.Sleeper.sleep;
 
 
 @Slf4j

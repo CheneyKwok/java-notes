@@ -1,6 +1,6 @@
 package com.gzc.heap;
 
-import juc.code.Sleeper;
+import com.gzc.Sleeper;
 
 /**
  * 演示堆内存

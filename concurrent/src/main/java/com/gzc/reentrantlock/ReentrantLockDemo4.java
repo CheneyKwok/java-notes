@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static juc.code.Sleeper.sleep;
+import static com.gzc.Sleeper.sleep;
 
 
 @Slf4j
