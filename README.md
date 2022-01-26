@@ -30,3 +30,4 @@
   - [**简单工厂模式**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E7%AE%80%E5%8D%95%E5%B7%A5%E5%8E%82%E6%A8%A1%E5%BC%8F)
   - [**工厂方法模式**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E5%B7%A5%E5%8E%82%E6%96%B9%E6%B3%95%E6%A8%A1%E5%BC%8F)
   - [**抽象工厂模式**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E6%8A%BD%E8%B1%A1%E5%B7%A5%E5%8E%82%E6%A8%A1%E5%BC%8F)
+  - [**原型模式**](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.md#%E5%8E%9F%E5%9E%8B%E6%A8%A1%E5%BC%8F)
