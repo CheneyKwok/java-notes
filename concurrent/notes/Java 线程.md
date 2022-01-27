@@ -323,72 +323,9 @@ out：
 
 通过判断打断标志来判断是否要终止线程
 
-### 两阶段终止模式
-
-在一个线程 T1 中如何“优雅”终止线程 T2 ？这里的优雅是给 T2 一个料理后事的机会
-
-#### 错误思路
-
-- 使用线程对象的 stop() 方法停止线程
-  stop() 方法会真正杀死线程，如果这时线程锁住了共享资源，那么当它被杀死后就再也没有机会释放锁，其他线程将永远无法获取锁
-
-- 使用 System.exit(init) 方法停止线程
-  目的仅是停止一个线程，但这种做法会让整个程序停止
-
-#### 设计两阶段终止模式
-
-![](../../.image/两阶段终止模式.png)
-
-```java
-@Slf4j
-public class TwoPhaseTerminationDemo {
-
-    public static void main(String[] args) throws InterruptedException {
-
-        TwoPhaseTermination tpt = new TwoPhaseTermination();
-        tpt.start();
-        TimeUnit.SECONDS.sleep(10);
-        tpt.stop();
-    }
-}
-
-@Slf4j
-class TwoPhaseTermination {
-
-    private Thread monitor;
-
-    // 启动监控线程
-    public void start() {
-        monitor = new Thread(() ->{
-            while (true){
-                Thread current = Thread.currentThread();
-                if(current.isInterrupted()){
-                    log.info("料理后事");
-                    break;
-                }
-                try {
-                    TimeUnit.SECONDS.sleep(2);
-                    log.info("执行监控");
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    // 重新设置打断标志
-                    current.interrupt();
-                }
-            }
-        });
-        monitor.start();
-    }
-
-    // 停止监控线程
-    public void stop() {
-        monitor.interrupt();
-    }
-}
-```
-
 ### 打断 park 线程
 
-使用 isInterrupted() 打断 park 线程，不会清除打断标记
+使用 interrupt() 打断 park 线程，不会清除打断标记
 
 ```java
  public static void main(String[] args) throws InterruptedException {
@@ -438,9 +375,10 @@ out:
 [Thread-0] INFO com.gzc.InterruptParkDemo - 打断状态：true
 [Thread-0] INFO com.gzc.InterruptParkDemo - un park......
 ```
+
 可以使用 **Thread.interrupted()** 清楚打断状态
 
-## 不推荐的方法
+### 不推荐的方法
 
 还有一些不推荐使用的方法，这些方法已过时，容易破环同步代码块，造成线程死锁
 
@@ -449,6 +387,69 @@ out:
 | stop() | 停止线程运行 |
 | suspend() | 挂起（暂停）线程运行 |
 | resume() | 恢复线程运行 |
+
+## 两阶段终止模式
+
+在一个线程 T1 中如何“优雅”终止线程 T2 ？这里的优雅是给 T2 一个料理后事的机会
+
+### 错误思路
+
+- 使用线程对象的 stop() 方法停止线程
+  stop() 方法会真正杀死线程，如果这时线程锁住了共享资源，那么当它被杀死后就再也没有机会释放锁，其他线程将永远无法获取锁
+
+- 使用 System.exit(init) 方法停止线程
+  目的仅是停止一个线程，但这种做法会让整个程序停止
+
+### 设计两阶段终止模式
+
+![](../../.image/两阶段终止模式.png)
+
+```java
+@Slf4j
+public class TwoPhaseTerminationDemo {
+
+    public static void main(String[] args) throws InterruptedException {
+
+        TwoPhaseTermination tpt = new TwoPhaseTermination();
+        tpt.start();
+        TimeUnit.SECONDS.sleep(10);
+        tpt.stop();
+    }
+}
+
+@Slf4j
+class TwoPhaseTermination {
+
+    private Thread monitor;
+
+    // 启动监控线程
+    public void start() {
+        monitor = new Thread(() ->{
+            while (true){
+                Thread current = Thread.currentThread();
+                if(current.isInterrupted()){
+                    log.info("料理后事");
+                    break;
+                }
+                try {
+                    TimeUnit.SECONDS.sleep(2);
+                    log.info("执行监控");
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    // 重新设置打断标志
+                    current.interrupt();
+                }
+            }
+        });
+        monitor.start();
+    }
+
+    // 停止监控线程
+    public void stop() {
+        monitor.interrupt();
+    }
+}
+```
 
 ## 主线程与守护线程
 
