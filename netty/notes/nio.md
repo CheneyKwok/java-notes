@@ -109,7 +109,7 @@ selector 的作用就是配置一个线程来管理多个 channel，获取这些
     }
 ```
 
-## ByteBuffer 结构
+### ByteBuffer 结构
 
 ByteBuffer 有以下重要属性
 
