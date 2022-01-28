@@ -109,8 +109,7 @@
 - [**NIO**](https://github.com/CheneyKwok/java-notes/blob/main/netty/notes/nio.md)
   - [Channel & Buffer](https://github.com/CheneyKwok/java-notes/blob/main/netty/notes/nio.md#channel--buffer)
   - [Selector](https://github.com/CheneyKwok/java-notes/blob/main/netty/notes/nio.md#Selector)
-  - [ByteBuffer](https://github.com/CheneyKwok/java-notes/blob/main/netty/notes/nio.md#bytebuffer)
-  - [Selector](https://github.com/CheneyKwok/java-notes/blob/main/netty/notes/nio.md#Selector)
+  - [ByteBuffer](https://github.com/CheneyKwok/java-notes/blob/main/netty/notes/nio.md#bytebuffer) 
 
 ## :ledger: [Design-Patterns 设计模式](https://github.com/CheneyKwok/java-notes/blob/main/design-patterns/notes/设计模式.md)
 
