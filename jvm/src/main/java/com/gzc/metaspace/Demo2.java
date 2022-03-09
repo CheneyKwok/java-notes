@@ -1,6 +1,6 @@
 package com.gzc.metaspace;
 
-import com.gzc.Sleeper;
+import com.gzc.utils.Sleeper;
 
 public class Demo2 {
 

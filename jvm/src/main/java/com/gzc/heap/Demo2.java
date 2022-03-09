@@ -1,6 +1,6 @@
 package com.gzc.heap;
 
-import com.gzc.Sleeper;
+import com.gzc.utils.Sleeper;
 
 /**
  * 演示堆内存

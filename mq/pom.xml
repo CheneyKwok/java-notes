@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.gzc</groupId>
     <version>1.0</version>
-    <artifactId>collections</artifactId>
+    <artifactId>mq</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
