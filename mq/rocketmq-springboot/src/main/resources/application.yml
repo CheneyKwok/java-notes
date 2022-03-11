@@ -1,0 +1,6 @@
+server:
+  port: 80
+rocketmq:
+  name-server: 1.15.156.232:9876
+  producer:
+    group: demo_producer
