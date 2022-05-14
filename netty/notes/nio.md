@@ -140,3 +140,162 @@ clear 动作发生后
 compact() 方法是把未读完的部分向前压缩，然后切换至读取模式
 
 ![](../../.image/0022.png)
+
+### ByteBuffer 常见方法
+
+#### 分配空间
+
+可以使用 allocate 方法为 ByteBuffer 分配空间，其它 buffer 类也有该方法
+
+```java
+Bytebuffer buf = ByteBuffer.allocate(16);
+```
+
+class java.nio.HeapByteBuffer    - java 堆内存 读写效率较低 受 GC 影响
+class java.nio.DirectByteBuffer  - 直接内存 读写效率高（少一次拷贝） 不受 GC 影响
+
+#### 向 buffer 写入数据
+
+有两种办法
+
+- 调用 channel 的 read 方法
+- 调用 buffer 自己的 put 方法
+
+```java
+int readBytes = channel.read(buf);
+```
+
+和
+
+```java
+buf.put((byte)127);
+```
+
+#### 从 buffer 读取数据
+
+同样有两种办法
+
+- 调用 channel 的 write 方法
+- 调用 buffer 自己的 get 方法
+
+```java
+int writeBytes = channel.write(buf);
+```
+
+和
+
+```java
+byte b = buf.get();
+```
+
+get 方法会让 position 读指针向后走，如果想重复读取数据
+
+- 可以调用 rewind 方法将 position 重新置为 0
+- 或者调用 get(int i) 方法获取索引 i 的内容，它不会移动读指针
+
+#### mark 和 reset
+
+mark 是在读取时，做一个标记，即使 position 改变，只要调用 reset 就能回到 mark 的位置
+
+> **注意**
+>
+> rewind 和 flip 都会清除 mark 位置
+
+#### 字符串与 ByteBuffer 互转
+
+```java
+public class ByteBufferStringTest {
+
+    public static void main(String[] args) {
+        // 字符串转 ByteBuffer
+        ByteBuffer buffer1 = ByteBuffer.allocate(16);
+        buffer1.put("hello".getBytes());
+        debugAll(buffer1);
+
+        // Charset auto flip
+        ByteBuffer buffer2 = StandardCharsets.UTF_8.encode("hello");
+        debugAll(buffer2);
+        // wrap auto flip
+        ByteBuffer buffer3 = ByteBuffer.wrap("hello".getBytes());
+        debugAll(buffer3);
+
+        String s = StandardCharsets.UTF_8.decode(buffer2).toString();
+        System.out.println(s);
+    }
+
+```
+
+#### ⚠️ Buffer 的线程安全
+
+> Buffer 是**非线程安全的**
+
+## 文件编程
+
+### FileChannel
+
+#### ⚠️ FileChannel 工作模式
+
+> FileChannel 只能工作在阻塞模式下
+-#### 获取
+
+不能直接打开 FileChannel，必须通过 FileInputStream、FileOutputStream 或者 RandomAccessFile 来获取 FileChannel，它们都有 getChannel 方法
+
+- 通过 FileInputStream 获取的 channel 只能读
+- 通过 FileOutputStream 获取的 channel 只能写
+- 通过 RandomAccessFile 是否能读写根据构造 RandomAccessFile 时的读写模式决定
+
+#### 读取
+
+会从 channel 读取数据填充 ByteBuffer，返回值表示读到了多少字节，-1 表示到达了文件的末尾
+
+```java
+int readBytes = channel.read(buffer);
+```
+
+#### 写入
+
+写入的正确姿势如下， SocketChannel
+
+```java
+ByteBuffer buffer = ...;
+buffer.put(...); // 存入数据
+buffer.flip();   // 切换读模式
+
+while(buffer.hasRemaining()) {
+    channel.write(buffer);
+}
+```
+
+在 while 中调用 channel.write 是因为 write 方法并不能保证一次将 buffer 中的内容全部写入 channel
+
+#### 关闭
+
+channel 必须关闭，不过调用了 FileInputStream、FileOutputStream 或者 RandomAccessFile 的 close 方法会间接地调用 channel 的 close 方法
+
+#### 位置
+
+获取当前位置
+
+```java
+long pos = channel.position();
+```
+
+设置当前位置
+
+```java
+long newPos = ...;
+channel.position(newPos);
+```
+
+设置当前位置时，如果设置为文件的末尾
+
+- 这时读取会返回 -1 
+- 这时写入，会追加内容，但要注意如果 position 超过了文件末尾，再写入时在新内容和原末尾之间会有空洞（00）
+
+#### 大小
+
+使用 size 方法获取文件的大小
+
+#### 强制写入
+
+操作系统出于性能的考虑，会将数据缓存，不是立刻写入磁盘。可以调用 force(true)  方法将文件内容和元数据（文件的权限等信息）立刻写入磁盘

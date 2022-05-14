@@ -1,8 +1,8 @@
-package com.gzc;
+package com.gzc.nio.bytefuffer;
 
 import java.nio.ByteBuffer;
 
-import static com.gzc.ByteBufferUtil.debugAll;
+import static com.gzc.nio.bytefuffer.ByteBufferUtil.debugAll;
 
 public class ByteBufferReadWriteTest {
 
