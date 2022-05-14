@@ -1,4 +1,4 @@
-package com.gzc.nio.filechannel;
+package com.gzc.nio.file;
 
 import java.io.IOException;
 import java.nio.file.*;

@@ -299,3 +299,241 @@ channel.position(newPos);
 #### 强制写入
 
 操作系统出于性能的考虑，会将数据缓存，不是立刻写入磁盘。可以调用 force(true)  方法将文件内容和元数据（文件的权限等信息）立刻写入磁盘
+
+### 两个 Channel 传输数据
+
+超过 2g 大小的文件传输
+
+```java
+public class FileChannelTransferTest {
+
+    public static void main(String[] args) {
+        try (FileChannel from = new FileInputStream("netty/from.txt").getChannel();
+             FileChannel to = new FileOutputStream("netty/to.txt").getChannel()) {
+
+            // 超过 2g 大小的文件传输
+            long size = from.size();
+            for (long left = size; left > 0;) {
+                // 效率高，底层会利用操作系统的零拷贝进行优化
+                left -= from.transferTo((size - left), left, to);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+### Path
+
+jdk7 引入了 Path 和 Paths 类
+
+* Path 用来表示文件路径
+* Paths 是工具类，用来获取 Path 实例
+
+```java
+Path source = Paths.get("1.txt"); // 相对路径 使用 user.dir 环境变量来定位 1.txt
+
+Path source = Paths.get("d:\\1.txt"); // 绝对路径 代表了  d:\1.txt
+
+Path source = Paths.get("d:/1.txt"); // 绝对路径 同样代表了  d:\1.txt
+
+Path projects = Paths.get("d:\\data", "projects"); // 代表了  d:\data\projects
+```
+
+- `.` 代表了当前路径
+- `..` 代表了上一级路径
+
+例如目录结构如下
+
+```
+d:
+	|- data
+		|- projects
+			|- a
+			|- b
+```
+
+代码
+
+```java
+Path path = Paths.get("d:\\data\\projects\\a\\..\\b");
+System.out.println(path);
+System.out.println(path.normalize()); // 正常化路径
+```
+
+会输出
+
+```
+d:\data\projects\a\..\b
+d:\data\projects\b
+```
+
+### Files
+
+检查文件是否存在
+
+```java
+Path path = Paths.get("helloword/data.txt");
+System.out.println(Files.exists(path));
+```
+
+创建一级目录
+
+```java
+Path path = Paths.get("helloword/d1");
+Files.createDirectory(path);
+```
+
+- 如果目录已存在，会抛异常 FileAlreadyExistsException
+- 不能一次创建多级目录，否则会抛异常 NoSuchFileException
+
+创建多级目录用
+
+```java
+Path path = Paths.get("helloword/d1/d2");
+Files.createDirectories(path);
+```
+
+拷贝文件
+
+```java
+Path source = Paths.get("helloword/data.txt");
+Path target = Paths.get("helloword/target.txt");
+
+Files.copy(source, target);
+```
+
+- 如果文件已存在，会抛异常 FileAlreadyExistsException
+
+如果希望用 source 覆盖掉 target，需要用 StandardCopyOption 来控制
+
+```java
+Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+```
+
+移动文件
+
+```java
+Path source = Paths.get("helloword/data.txt");
+Path target = Paths.get("helloword/data.txt");
+
+Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+```
+
+- StandardCopyOption.ATOMIC_MOVE 保证文件移动的原子性
+
+删除文件
+
+```java
+Path target = Paths.get("helloword/target.txt");
+
+Files.delete(target);
+```
+
+- 如果文件不存在，会抛异常 NoSuchFileException
+
+删除目录
+
+```java
+Path target = Paths.get("helloword/d1");
+
+Files.delete(target);
+```
+
+- 如果目录还有内容，会抛异常 DirectoryNotEmptyException
+
+遍历目录文件
+
+```java
+public class FileWalkTreeTest {
+
+    public static void main(String[] args) throws IOException {
+
+        AtomicInteger dirCount = new AtomicInteger();
+        AtomicInteger fileCount = new AtomicInteger();
+        AtomicInteger jarCount = new AtomicInteger();
+        // 访问者模式
+        Files.walkFileTree(Paths.get("C:\\Program Files\\Java\\jdk1.8.0_321"), new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+
+                System.out.println("============>" + dir);
+                dirCount.incrementAndGet();
+                return super.preVisitDirectory(dir, attrs);
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                System.out.println(file);
+                fileCount.incrementAndGet();
+                if (file.toString().endsWith("jar")) {
+                    jarCount.incrementAndGet();
+                }
+                return super.visitFile(file, attrs);
+            }
+        });
+
+        System.out.println("dirCount = " + dirCount);
+        System.out.println("fileCount = " + fileCount);
+        System.out.println("jarCount = " + jarCount);
+    }
+}
+```
+
+删除多级目录
+
+```java
+public class FileDeleteTreeTest {
+
+    public static void main(String[] args) throws IOException {
+
+        Files.walkFileTree(Paths.get("G:\\GitHub\\rpc-framework-copy"), new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.delete(file);
+                return super.visitFile(file, attrs);
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                Files.delete(dir);
+                return super.postVisitDirectory(dir, exc);
+            }
+        });
+        System.out.println("delete success");
+
+    }
+}
+```
+
+拷贝多级目录
+
+```java
+public class FilesCopyTest {
+
+    public static void main(String[] args) throws IOException {
+        String source = "G:\\GitHub\\rpc-framework";
+        String target = "G:\\GitHub\\rpc-framework-copy";
+
+        Files.walk(Paths.get(source)).forEach(path -> {
+            try {
+                String targetPath = path.toString().replace(source, target);
+
+                // 如果是文件夹则创建
+                if (Files.isDirectory(path)) {
+                    Files.createDirectory(Paths.get(targetPath));
+                }
+                // 如果是文件 copy
+                if (Files.isRegularFile(path)) {
+                    Files.copy(path, Paths.get(targetPath));
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        System.out.println("copy success");
+    }
+}
+```
