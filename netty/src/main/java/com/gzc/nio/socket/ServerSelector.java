@@ -48,16 +48,49 @@ public class ServerSelector {
                     ServerSocketChannel channel = (ServerSocketChannel) key.channel();
                     SocketChannel sc = channel.accept();
                     sc.configureBlocking(false);
-                    sc.register(selector, SelectionKey.OP_READ, null);
+                    ByteBuffer buffer = ByteBuffer.allocate(16);
+                    sc.register(selector, SelectionKey.OP_READ, buffer);
                     log.info("{}", sc);
                 } else if (key.isReadable()) {
-                    SocketChannel channel = (SocketChannel) key.channel();
-                    ByteBuffer buffer = ByteBuffer.allocate(16);
-                    channel.read(buffer);
-                    buffer.flip();
-                    debugAll(buffer);
+                    try {
+                        SocketChannel channel = (SocketChannel) key.channel();
+                        ByteBuffer buffer = (ByteBuffer) key.attachment();
+                        int read = channel.read(buffer);
+                        if (read == -1) {
+                            key.cancel();
+                        } else {
+                            split(buffer);
+                            if (buffer.position() == buffer.limit()) {
+                                ByteBuffer newBuffer = ByteBuffer.allocate(buffer.capacity() * 2);
+                                buffer.flip();
+                                newBuffer.put(buffer);
+                                key.attach(newBuffer);
+                            }
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        key.cancel(); // 对于未处理的事件需要取消
+                    }
                 }
             }
         }
+    }
+
+    private static void split(ByteBuffer source) {
+        // to read
+        source.flip();
+        for (int i = 0; i < source.limit(); i++) {
+            if (source.get(i) == '\n') {
+                int len = i + 1 - source.position();
+                ByteBuffer buffer = ByteBuffer.allocate(len);
+                for (int j = 0; j < len; j++) {
+                    buffer.put(source.get());
+                }
+                debugAll(buffer);
+            }
+        }
+        // to write
+        source.compact();
+
     }
 }
