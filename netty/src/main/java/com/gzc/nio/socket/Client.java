@@ -10,7 +10,7 @@ public class Client {
     public static void main(String[] args) throws IOException {
         SocketChannel client = SocketChannel.open();
 
-        client.connect(new InetSocketAddress(8888));
+        client.connect(new InetSocketAddress(7777));
 
         client.write(StandardCharsets.UTF_8.encode("aaaabbbbccccddd3333\n"));
 
