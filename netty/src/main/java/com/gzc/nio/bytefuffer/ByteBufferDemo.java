@@ -14,7 +14,7 @@ public class ByteBufferDemo {
         // FileChannel
         // 获取方式：1. 输入输出流 2. new RandomAccessFile("data.txt", "r").getChannel()
         // 将文件写入 channel
-        try (FileChannel channel = new FileInputStream("data.txt").getChannel()) {
+        try (FileChannel channel = new FileInputStream("netty/data.txt").getChannel()) {
             // 申请缓冲区
             ByteBuffer buffer = ByteBuffer.allocate(10);
             while (true) {
