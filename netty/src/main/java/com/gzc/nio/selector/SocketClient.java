@@ -1,11 +1,11 @@
-package com.gzc.nio.socket;
+package com.gzc.nio.selector;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 
-public class Client {
+public class SocketClient {
 
     public static void main(String[] args) throws IOException {
         SocketChannel client = SocketChannel.open();

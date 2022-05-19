@@ -1,4 +1,4 @@
-package com.gzc.nio.socket;
+package com.gzc.nio.selector;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -13,7 +13,7 @@ import java.util.List;
 import static com.gzc.nio.bytefuffer.ByteBufferUtil.debugAll;
 
 @Slf4j
-public class Server {
+public class SocketServer {
 
     public static void main(String[] args) throws IOException {
 
