@@ -256,3 +256,135 @@ static void invokeChannelRead(final AbstractChannelHandlerContext next, Object m
     }
 }
 ```
+
+### Channel
+
+channel 的主要作用
+
+- close() 可以用来关闭 channel
+- closeFuture() 用来处理 channel 的关闭
+  - sync() 方法的作用是同步等待 channel 关闭
+  - addListener() 是异步等待 channel 关闭
+- pipeline 添加处理器
+- write() 将数据写入
+- writeAndFlush() 将 数据写入并刷出
+
+#### ChannelFuture
+
+> channel()
+
+获取 channel 对象
+
+由于 connect() 是异步的，因此 ChannelFuture 不能立刻获取 channel 对象，需通过 sync() 或 addListener() 两个方法
+
+> sync()
+
+同步等待连接完成
+
+```java
+public class ChannelFutureTest {
+
+    public static void main(String[] args) throws InterruptedException {
+        ChannelFuture cf = ChannelFactory.getChannelFuture();
+       testSync(cf);
+    }
+
+    private static void testSync(ChannelFuture cf) throws InterruptedException {
+        Channel channel = cf.sync().channel();
+        channel.writeAndFlush("hello");
+    }
+}
+```
+
+> addListener()
+
+添加 listener，在连接建立时被调用
+
+```java
+public class ChannelFutureTest {
+
+    public static void main(String[] args) throws InterruptedException {
+        ChannelFuture cf = ChannelFactory.getChannelFuture();
+        testListener(cf);
+    }
+
+    private static void testListener(ChannelFuture cf) {
+        cf.addListener((ChannelFutureListener) future -> {
+            Channel channel = future.channel();
+            channel.writeAndFlush("hello");
+        });
+    }
+}
+```
+
+#### closeFuture
+
+> sync()
+
+同步等待 channel 关闭
+
+```java
+public class CloseFutureTest {
+
+    public static void main(String[] args) throws InterruptedException {
+        ChannelFuture cf = ChannelFactory.getChannelFuture();
+        Channel channel = cf.sync().channel();
+        new Thread(() -> {
+            Scanner scanner = new Scanner(System.in);
+            String line;
+            while ((line = scanner.next()) != null) {
+                if (line.equals("q")) {
+                    channel.close();
+                    break;
+                }
+                channel.writeAndFlush(line);
+            }
+        }, "input").start();
+        ChannelFuture closeFuture = channel.closeFuture();
+        testSync(closeFuture);
+    }
+
+    private static void testSync(ChannelFuture closeFuture) throws InterruptedException {
+        log.info("关闭之前");
+        // 主线程会在这里阻塞直到 channel 关闭
+        closeFuture.sync();
+        log.info("处理关闭之后的操作");
+    }
+}
+```
+
+> addListener()
+
+添加监听器在 channel 关闭时被调用
+
+```java
+public class CloseFutureTest {
+
+    public static void main(String[] args) throws InterruptedException {
+        ChannelFuture cf = ChannelFactory.getChannelFuture();
+        Channel channel = cf.sync().channel();
+        new Thread(() -> {
+            Scanner scanner = new Scanner(System.in);
+            String line;
+            while ((line = scanner.next()) != null) {
+                if (line.equals("q")) {
+                    channel.close();
+                    break;
+                }
+                channel.writeAndFlush(line);
+            }
+        }, "input").start();
+        ChannelFuture closeFuture = channel.closeFuture();
+        testListener(closeFuture);
+    }
+
+    private static void testListener(ChannelFuture closeFuture) {
+        closeFuture.addListener(future -> log.info("处理关闭之后的操作"));
+    }
+
+}
+```
+
+#### 💡 异步提升的是什么
+
+Netty 异步提升的是吞吐量
