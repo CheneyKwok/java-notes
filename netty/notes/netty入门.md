@@ -669,5 +669,52 @@ public class EmbeddedChannelTest {
 #### 创建
 
 ```java
-
+// 默认 capacity 256
+ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
+log(buffer);
 ```
+
+其中 log() 方法参考如下
+
+```java
+        int length = buffer.readableBytes();
+        int rows = length / 16 + (length % 15 == 0 ? 0 : 1) + 4;
+        StringBuilder buf = new StringBuilder(rows * 80 * 2)
+                .append(buffer)
+                .append(NEWLINE);
+        appendPrettyHexDump(buf, buffer);
+        System.out.println(buf);
+```
+
+#### 直接内存 vs 堆内存
+
+创建池化基于堆的 ByteBuf
+
+```java
+ByteBuf buffer = ByteBufAllocator.DEFAULT.heapBuffer(10);
+```
+
+创建池化基于直接内存的 ByteBuf
+
+```java
+ByteBuf buffer = ByteBufAllocator.DEFAULT.directBuffer(10);
+```
+
+- 直接内存创建和销毁的代价昂贵，但读写性能高（少一次内存复制），适合配合池化功能一起用
+- 直接内存对 GC 压力小，不受 JVM 垃圾回收的管理，但也要注意及时主动释放
+
+#### 池化 vs 非池化
+
+池化的最大意义在于可以重用 ByteBuf，优点有
+
+- 没有池化，则每次都得创建新的 ByteBuf 实例，这个操作对直接内存代价昂贵，就算是堆内存，也会增加 GC 压力
+- 有了池化，则可以重用池中 ByteBuf 实例，并且采用了与 jemalloc 类似的内存分配算法提升分配效率
+- 池化功能是否开启，可以通过系统环境变量来设定
+
+```java
+-Dio.netty.allocator.type={unpooled|pooled}
+```
+
+- 4.1 之后，非 Android 平台默认启用池化实现，Android 默认关闭
+- 4.1 之前，池化功能还不成熟，默认是非池化实现
+
