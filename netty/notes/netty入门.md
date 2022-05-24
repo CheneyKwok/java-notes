@@ -388,3 +388,286 @@ public class CloseFutureTest {
 #### 💡 异步提升的是什么
 
 Netty 异步提升的是吞吐量
+
+### Future & Promise
+
+在异步处理时，经常用到这两个接口
+
+- jdk Future 只能同步等待任务结束（或成功、或失败）才能得到结果
+- netty Future 可以同步等待任务结束得到结果，也可以异步方式得到结果，但是要等到任务结束
+- netty Promise 不仅有 netty Future 的功能，而且脱离了任务独立存在，只作为两个线程间传递结果的容器
+
+| 功能/名称    | jdk Future                      | netty Future                                                 | Promise      |
+| ------------ | ------------------------------ | ------------------------------------------------------------ | ------------ |
+| cancel       | 取消任务                        | -                                                            | -            |
+| isCanceled   | 任务是否取消                    | -                                                            | -            |
+| isDone       | 任务是否完成，不能区分成功失败    | -                                                            | -            |
+| get          | 获取任务结果，阻塞等待           | -                                                            | -            |
+| getNow       | -                              | 获取任务结果，非阻塞，还未产生结果时返回 null                    | -            |
+| await        | -                              | 等待任务结束，如果任务失败，不会抛异常，而是通过 isSuccess 判断   | -            |
+| sync         | -                              | 等待任务结束，如果任务失败，抛出异常                             | -            |
+| isSuccess    | -                              | 判断任务是否成功                                               | -            |
+| cause        | -                              | 获取失败信息，非阻塞，如果没有失败，返回null                     | -            |
+| addLinstener | -                              | 添加回调，异步接收结果                                         | -            |
+| setSuccess   | -                              | -                                                            | 设置成功结果 |
+| setFailure   | -                              | -                                                            | 设置失败结果 |
+
+#### 例1
+
+同步处理任务成功
+
+```java
+DefaultEventLoop eventExecutors = new DefaultEventLoop();
+DefaultPromise<Integer> promise = new DefaultPromise<>(eventExecutors);
+
+eventExecutors.execute(()->{
+    try {
+        Thread.sleep(1000);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    log.debug("set success, {}",10);
+    promise.setSuccess(10);
+});
+
+log.debug("start...");
+log.debug("{}",promise.getNow()); // 还没有结果
+log.debug("{}",promise.get());
+```
+
+#### 例2
+
+异步处理任务成功
+
+```java
+DefaultEventLoop eventExecutors = new DefaultEventLoop();
+DefaultPromise<Integer> promise = new DefaultPromise<>(eventExecutors);
+
+// 设置回调，异步接收结果
+promise.addListener(future -> {
+    // 这里的 future 就是上面的 promise
+    log.debug("{}",future.getNow());
+});
+
+// 等待 1000 后设置成功结果
+eventExecutors.execute(()->{
+    try {
+        Thread.sleep(1000);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    log.debug("set success, {}",10);
+    promise.setSuccess(10);
+});
+
+log.debug("start...");
+```
+
+#### 例3
+
+同步处理任务失败 - sync & get
+
+```java
+DefaultEventLoop eventExecutors = new DefaultEventLoop();
+        DefaultPromise<Integer> promise = new DefaultPromise<>(eventExecutors);
+
+        eventExecutors.execute(() -> {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            RuntimeException e = new RuntimeException("error...");
+            log.debug("set failure, {}", e.toString());
+            promise.setFailure(e);
+        });
+
+        log.debug("start...");
+        log.debug("{}", promise.getNow());
+        promise.get(); // sync() 也会出现异常，只是 get 会再用 ExecutionException 包一层异常
+```
+
+#### 例4
+
+同步处理任务失败 - await
+
+```java
+DefaultEventLoop eventExecutors = new DefaultEventLoop();
+DefaultPromise<Integer> promise = new DefaultPromise<>(eventExecutors);
+
+eventExecutors.execute(() -> {
+    try {
+        Thread.sleep(1000);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    RuntimeException e = new RuntimeException("error...");
+    log.debug("set failure, {}", e.toString());
+    promise.setFailure(e);
+});
+
+log.debug("start...");
+log.debug("{}", promise.getNow());
+promise.await(); // 与 sync 和 get 区别在于，不会抛异常
+log.debug("result {}", (promise.isSuccess() ? promise.getNow() : promise.cause()).toString());
+```
+
+#### 例5
+
+异步处理任务失败
+
+```java
+DefaultEventLoop eventExecutors = new DefaultEventLoop();
+DefaultPromise<Integer> promise = new DefaultPromise<>(eventExecutors);
+
+promise.addListener(future -> {
+    log.debug("result {}", (promise.isSuccess() ? promise.getNow() : promise.cause()).toString());
+});
+
+eventExecutors.execute(() -> {
+    try {
+        Thread.sleep(1000);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    RuntimeException e = new RuntimeException("error...");
+    log.debug("set failure, {}", e.toString());
+    promise.setFailure(e);
+});
+
+log.debug("start...");
+```
+
+### Handler & Pipeline
+
+ChannelHandler 用来处理 Channel 上的各种事件，分为入站、出站两种。所有 ChannelHandler 连成一串，就是 Pipeline
+
+- 入站处理器通常是 ChannelInboundHandlerAdapter 的子类，主要用来读取客户端数据，写回结果
+- 出站处理器通常是 ChannelOutboundHandlerAdapter 的子类，主要对写回结果进行加工
+
+打个比喻，每个 Channel 是一个产品的加工车间，Pipeline 是车间中的流水线，ChannelHandler 就是流水线上的各道工序，而后面讲的 ByteBuf 是原材料，经过很多工序的加工：先经过一道道入站工序，再经过一道道出站工序最终变成产品
+
+```java
+public class ChannelHandlerTest {
+
+    public static void main(String[] args) {
+        new ServerBootstrap()
+                .group(new NioEventLoopGroup())
+                .channel(NioServerSocketChannel.class)
+                .childHandler(new ChannelInitializer<NioSocketChannel>() {
+                    @Override
+                    protected void initChannel(NioSocketChannel ch) throws Exception {
+                        ch.pipeline()
+                                .addLast(new ChannelInboundHandlerAdapter() {
+                                    @Override
+                                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                                        System.out.println(1);
+                                        super.channelRead(ctx, msg);
+                                    }
+                                })
+                                .addLast(new ChannelOutboundHandlerAdapter(){
+                                    @Override
+                                    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                                        System.out.println(7);
+                                        super.write(ctx, msg, promise);
+                                    }
+                                })
+                                .addLast(new ChannelInboundHandlerAdapter() {
+                                    @Override
+                                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                                        System.out.println(2);
+                                        super.channelRead(ctx, msg);
+                                    }
+                                })
+                                .addLast(new ChannelInboundHandlerAdapter() {
+                                    @Override
+                                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                                        System.out.println(3);
+                                        ctx.channel().writeAndFlush(msg);
+                                    }
+                                })
+                                .addLast(new ChannelOutboundHandlerAdapter() {
+                                    @Override
+                                    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                                        System.out.println(4);
+                                        super.write(ctx, msg, promise);
+                                    }
+                                })
+                                .addLast(new ChannelOutboundHandlerAdapter() {
+                                    @Override
+                                    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                                        System.out.println(5);
+                                        super.write(ctx, msg, promise);
+                                    }
+                                })
+                                .addLast(new ChannelOutboundHandlerAdapter() {
+                                    @Override
+                                    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                                        System.out.println(6);
+                                        super.write(ctx, msg, promise);
+                                    }
+                                });
+                    }
+                })
+                .bind(8080);
+    }
+}
+```
+
+- addLast() 是将 handler 加在队列（head -> h1 -> h2 -> h3 -> tail）的 tail 尾节点之前
+- ctx.channel().write() 从尾部开始查找出站处理器
+- ctr.write() 是从当前节点往前找上一个出站处理器
+
+EmbeddedChannel
+
+```java
+public class EmbeddedChannelTest {
+
+    public static void main(String[] args) {
+        ChannelInboundHandlerAdapter h1 = new ChannelInboundHandlerAdapter() {
+            @Override
+            public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                log.info("1");
+                super.channelRead(ctx, msg);
+            }
+        };
+        ChannelInboundHandlerAdapter h2 = new ChannelInboundHandlerAdapter() {
+            @Override
+            public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                log.info("2");
+                super.channelRead(ctx, msg);
+            }
+        };
+        ChannelOutboundHandlerAdapter h3 = new ChannelOutboundHandlerAdapter() {
+            @Override
+            public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                log.info("3");
+                super.write(ctx, msg, promise);
+            }
+        };
+        ChannelOutboundHandlerAdapter h4 = new ChannelOutboundHandlerAdapter() {
+            @Override
+            public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                log.info("4");
+                super.write(ctx, msg, promise);
+            }
+        };
+
+        EmbeddedChannel embeddedChannel = new EmbeddedChannel(h1, h2, h3, h4);
+        // 模拟入站操作
+        embeddedChannel.writeInbound(ByteBufAllocator.DEFAULT.buffer().writeBytes("hello".getBytes()));
+        // 模拟出站操作
+        embeddedChannel.writeOutbound(ByteBufAllocator.DEFAULT.buffer().writeBytes("world".getBytes()));
+    }
+}
+```
+
+### ByteBuf
+
+字节数据的封装
+
+#### 创建
+
+```java
+
+```
