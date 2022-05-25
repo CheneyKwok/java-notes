@@ -718,3 +718,155 @@ ByteBuf buffer = ByteBufAllocator.DEFAULT.directBuffer(10);
 - 4.1 之后，非 Android 平台默认启用池化实现，Android 默认关闭
 - 4.1 之前，池化功能还不成熟，默认是非池化实现
 
+#### 写入
+
+方法列表
+
+| 方法签名                                                     | 含义                   | 备注                                        |
+| ------------------------------------------------------------ | ---------------------- | ------------------------------------------- |
+| writeBoolean(boolean value)                                  | 写入 boolean 值        | 用一字节 01\|00 代表 true\|false            |
+| writeByte(int value)                                         | 写入 byte 值           |                                             |
+| writeShort(int value)                                        | 写入 short 值          |                                             |
+| writeInt(int value)                                          | 写入 int 值            | Big Endian，即 0x250，写入后 00 00 02 50    |
+| writeIntLE(int value)                                        | 写入 int 值            | Little Endian，即 0x250，写入后 50 02 00 00 |
+| writeLong(long value)                                        | 写入 long 值           |                                             |
+| writeChar(int value)                                         | 写入 char 值           |                                             |
+| writeFloat(float value)                                      | 写入 float 值          |                                             |
+| writeDouble(double value)                                    | 写入 double 值         |                                             |
+| writeBytes(ByteBuf src)                                      | 写入 netty 的 ByteBuf  |                                             |
+| writeBytes(byte[] src)                                       | 写入 byte[]            |                                             |
+| writeBytes(ByteBuffer src)                                   | 写入 nio 的 ByteBuffer |                                             |
+| int writeCharSequence(CharSequence sequence, Charset charset) | 写入字符串             |                                             |
+
+> 注意
+>
+> - 这些方法的未指明返回值的，其返回值都是 ByteBuf，意味着可以链式调用
+> - 网络传输，默认习惯是 Big Endian
+
+#### 扩容
+
+再写入一个 int 整数时，容量不够了（初始容量是 10），这时会引发扩容
+
+```java
+buffer.writeInt(6);
+log(buffer);
+```
+
+扩容规则是
+
+- 如何写入后数据大小未超过 512，则选择下一个 16 的整数倍，例如写入后大小为 12 ，则扩容后 capacity 是 16
+- 如果写入后数据大小超过 512，则选择下一个 2^n，例如写入后大小为 513，则扩容后 capacity 是 2^10=1024（2^9=512 已经不够了）
+- 扩容不能超过 max capacity 会报错
+
+#### 读取
+
+getByte(index) 等一系列方法，不会改变 ridx
+
+readByte() 等一系列方法，移动 ridx
+
+markReaderIndex() 标记 idx
+
+resetReaderIndex() 重复读取到 idx 标记位置
+
+#### retain & release
+
+由于 Netty 中有堆外内存的 ByteBuf 实现，堆外内存最好是手动释放，而不是等 GC 垃圾回收
+
+- UnpooledHeapByteBuf 使用的是 JVM 内存，只需要等 GC 回收内存即可
+- UnpooledDirectByteBuf 使用的是直接内存，需要特殊帆帆发来回收内存
+- PooledByteBuf 和它的子类使用了池化机制，需要复杂的规则来回收内存
+
+> 回收内存的源码实现，面方法的不同实现
+>
+> `protected abstract void deallocate()`
+
+Netty 采用了引用计数法来控制回收内存，每个 ByteBuf 都实现了 ReferenceCounted 接口
+
+- 每个 ByteBuf 对象的初始计数为 1
+- 调用 release 方法计数减 1，如果计数为 0，回收 ByteBuf 内存
+- 调用 retain 方法计数加 1，表示调用者没用完之前，其他 handler 即使调用了 release 也不会回收
+- 当计数为 0 时，底层内存会被回收，这时即使 ByteBuf 对象还在，其各个方法均无法正常使用
+
+谁负责 release
+
+因为 pipeline 的存在，一般需要将 ByteBuf 传递给下一个 ChannelHandler，如果在 finally 中 release 了，就失去了传递性（当然，如果在这个 ChannelHandler 内这个 ByteBuf 已完成了它的使命，那么便无须再传递）
+
+基本规则是，**谁是最后使用者，谁负责 release**，详细分析如下
+
+- 起点，对于 NIO 实现来讲，在 io.netty.channel.nio.AbstractNioByteChannel.NioByteUnsafe#read 方法中首次创建 ByteBuf 放入 pipeline（line 163 pipeline.fireChannelRead(byteBuf)）
+- 入站 ByteBuf 处理原则
+  - 对原始 ByteBuf 不做处理，调用 ctx.fireChannelRead(msg) 向后传递，这时无须 release
+  - 将原始 ByteBuf 转换为其它类型的 Java 对象，这时 ByteBuf 就没用了，必须 release
+  - 如果不调用 ctx.fireChannelRead(msg) 向后传递，那么也必须 release
+  - 如果发生异常 ByteBuf 没有成功传递到下一个 ChannelHandler，必须 release
+  - 假设消息一直向后传，那么 TailContext 会负责释放未处理消息（原始的 ByteBuf）
+- 出站 ByteBuf 处理原则
+  - 出站消息最终都会转为 ByteBuf 输出，一直向前传，由 HeadContext flush 后 release
+- 异常处理原则
+  - 有时候不清楚 ByteBuf 被引用了多少次，但又必须彻底释放，可以循环调用 release 直到返回 true
+
+TailContext 释放未处理消息逻辑
+
+```java
+// io.netty.channel.DefaultChannelPipeline#onUnhandledInboundMessage(java.lang.Object)
+protected void onUnhandledInboundMessage(Object msg) {
+    try {
+        logger.debug(
+            "Discarded inbound message {} that reached at the tail of the pipeline. " +
+            "Please check your pipeline configuration.", msg);
+    } finally {
+        ReferenceCountUtil.release(msg);
+    }
+}
+
+public static boolean release(Object msg) {
+    if (msg instanceof ReferenceCounted) {
+        return ((ReferenceCounted) msg).release();
+    }
+    return false;
+}
+```
+
+#### slice
+
+【零拷贝】的体现之一，对原始 ByteBuf 进行切片成多个 ByteBuf，切片后的 ByteBuf 并没有发生内存复制，还是使用原始 ByteBuf 的内存，切片后的 ByteBuf 维护独立的 read，write 指针
+
+切片后的 max capacity 被固定为这个区间的大小，不能追加 write
+
+无参 slice 是从原始 ByteBuf 的 read index 到 write index 之间的内容进行切片
+
+![图 1](../../.image/39da9fbfe7f466bd89672c052d82c3126877893a18d75fdd9da4d50e9c79c342.png)  
+
+```java
+public class SliceTest {
+
+    public static void main(String[] args) {
+        ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(10);
+        buf.writeBytes(new byte[]{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'});
+        log(buf);
+
+        ByteBuf f1 = buf.slice(0, 5);
+        f1.retain();
+        ByteBuf f2 = buf.slice(5, 5);
+        f2.retain();
+        f1.setByte(0, 'z');
+        log(buf);
+        log(f1);
+        log(f2);
+        System.out.println("释放原有 ByteBuf 内存");
+        buf.release();
+        log(f1);
+        log(f2);
+    }
+}
+```
+
+#### duplicate
+
+【零拷贝】的体现之一，就好比截取了原始 ByteBuf 所有内容，并且没有 max capacity 的限制，也是与原始 ByteBuf 使用同一块底层内存，只是读写指针是独立的
+
+![图 2](../../.image/60ffa0c47bcf9c0cec98efd46d8bd7124e842e064902aeb790efb3f908dbf435.png)  
+
+#### copy
+
+会将底层内存数据进行深拷贝，因此无论读写，都与原始 ByteBuf 无关
