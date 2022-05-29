@@ -668,3 +668,198 @@ public class Client4 {
 
 ...
 ```
+
+## 协议设计与解析
+
+### 为什么需要协议
+
+TCP/IP 中消息传输基于流方式，没有边界
+
+协议的目的是协定消息的边界，制定通信双方要共同遵守的通信规则
+
+### redis 协议举例
+
+```java
+public class redisTest {
+
+    /**
+     * set name zhangsan // redis 将整个命令看作一个数组
+     * *3                // 数组共有几个元素
+     * $3                // set 元素的长度
+     * set               // set 元素的内容
+     * $4                // name 元素的长度
+     * name              // name 元素的内容
+     * $8                // zhangsan 元素的长度
+     * zhangsan          // zhangsan 元素的内容
+     */
+
+    public static void main(String[] args) {
+        NioEventLoopGroup worker = new NioEventLoopGroup();
+        byte[] LINE = {13, 10};
+        try {
+            ChannelFuture channelFuture = new Bootstrap()
+                    .group(worker)
+                    .channel(NioSocketChannel.class)
+                    .handler(new ChannelInitializer<NioSocketChannel>() {
+                        @Override
+                        protected void initChannel(NioSocketChannel ch) throws Exception {
+                            ch.pipeline()
+                                    .addLast(new ChannelInboundHandlerAdapter() {
+                                        @Override
+                                        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+                                            log.info("sending...");
+                                            set(ctx);
+                                            get(ctx);
+                                        }
+
+                                        @Override
+                                        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                                            ByteBuf buf = (ByteBuf) msg;
+                                            System.out.println(buf.toString(Charset.defaultCharset()));
+                                            super.channelRead(ctx, msg);
+                                        }
+
+                                        private void set(ChannelHandlerContext ctx) {
+                                            ByteBuf buffer = ctx.alloc().buffer();
+                                            buffer.writeBytes("*3".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("$3".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("set".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("$4".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("name".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("$8".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("zhangsan".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            ctx.writeAndFlush(buffer);
+                                        }
+
+                                        private void get(ChannelHandlerContext ctx) {
+                                            ByteBuf buffer = ctx.alloc().buffer();
+                                            buffer.writeBytes("*2".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("$3".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("get".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("$4".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            buffer.writeBytes("name".getBytes());
+                                            buffer.writeBytes(LINE);
+                                            ctx.writeAndFlush(buffer);
+                                        }
+                                    });
+                        }
+                    })
+                    .connect(new InetSocketAddress(6379))
+                    .sync();
+            log.info("connected {}", channelFuture.channel());
+            channelFuture.channel().closeFuture().sync();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            worker.shutdownGracefully();
+        }
+    }
+}
+```
+
+输出
+
+```java
+14:28:49.806 [nioEventLoopGroup-2-1] INFO com.gzc.netty.advance.agreement.RedisTest - sending...
+14:28:49.812 [nioEventLoopGroup-2-1] DEBUG io.netty.util.Recycler - -Dio.netty.recycler.maxCapacityPerThread: 4096
+14:28:49.812 [nioEventLoopGroup-2-1] DEBUG io.netty.util.Recycler - -Dio.netty.recycler.maxSharedCapacityFactor: 2
+14:28:49.812 [nioEventLoopGroup-2-1] DEBUG io.netty.util.Recycler - -Dio.netty.recycler.linkCapacity: 16
+14:28:49.812 [nioEventLoopGroup-2-1] DEBUG io.netty.util.Recycler - -Dio.netty.recycler.ratio: 8
+14:28:49.812 [nioEventLoopGroup-2-1] DEBUG io.netty.util.Recycler - -Dio.netty.recycler.delayedQueue.ratio: 8
+14:28:49.807 [main] INFO com.gzc.netty.advance.agreement.RedisTest - connected [id: 0xb498eb74, L:/172.21.32.1:52139 - R:0.0.0.0/0.0.0.0:6379]
+14:28:49.823 [nioEventLoopGroup-2-1] DEBUG io.netty.buffer.AbstractByteBuf - -Dio.netty.buffer.checkAccessible: true
+14:28:49.823 [nioEventLoopGroup-2-1] DEBUG io.netty.buffer.AbstractByteBuf - -Dio.netty.buffer.checkBounds: true
+14:28:49.824 [nioEventLoopGroup-2-1] DEBUG io.netty.util.ResourceLeakDetectorFactory - Loaded default ResourceLeakDetector: io.netty.util.ResourceLeakDetector@4cc5aa28
++OK
+$8
+zhangsan
+```
+
+### http 协议举例
+
+```java
+public class HttpTest {
+
+    public static void main(String[] args) {
+        NioEventLoopGroup boss = new NioEventLoopGroup();
+        NioEventLoopGroup worker = new NioEventLoopGroup();
+        try {
+            new ServerBootstrap()
+                    .group(boss, worker)
+                    .channel(NioServerSocketChannel.class)
+                    .childHandler(new ChannelInitializer<NioSocketChannel>() {
+                        @Override
+                        protected void initChannel(NioSocketChannel ch) throws Exception {
+                            ch.pipeline()
+                                    .addLast(new HttpServerCodec())
+                                    .addLast(new LoggingHandler(LogLevel.DEBUG))
+                                    .addLast(new SimpleChannelInboundHandler<HttpRequest>() {
+                                        @Override
+                                        protected void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) throws Exception {
+                                            log.info(httpRequest.uri());
+                                            DefaultFullHttpResponse response = new DefaultFullHttpResponse(httpRequest.protocolVersion(), HttpResponseStatus.OK);
+                                            byte[] bytes = "<h1> Hello, World!</h1>".getBytes();
+                                            response.headers().setInt(CONTENT_LENGTH, bytes.length);
+                                            response.content().writeBytes(bytes);
+                                            ctx.writeAndFlush(response);
+                                        }
+                                    });
+                        }
+                    })
+                    .bind(8080)
+                    .sync()
+                    .channel()
+                    .closeFuture()
+                    .sync();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            worker.shutdownGracefully();
+        }
+    }
+}
+```
+
+输出
+
+```text
+17:18:51.096 [nioEventLoopGroup-3-1] DEBUG io.netty.handler.logging.LoggingHandler - [id: 0x111f9c13, L:/127.0.0.1:8080 - R:/127.0.0.1:59211] READ: DefaultHttpRequest(decodeResult: success, version: HTTP/1.1)
+GET /index HTTP/1.1
+Host: 127.0.0.1:8080
+Connection: keep-alive
+Cache-Control: max-age=0
+sec-ch-ua: " Not A;Brand";v="99", "Chromium";v="101", "Google Chrome";v="101"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.41 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
+Sec-Fetch-Site: cross-site
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Accept-Encoding: gzip, deflate, br
+Accept-Language: zh-CN,zh;q=0.9
+Cookie: JSESSIONID_wanmei_fish_manager=55574b58-a8b0-4f3e-88bf-32a2b688c7d0; login_proxy_sale=1653811757390
+17:18:51.096 [nioEventLoopGroup-3-1] INFO com.gzc.netty.advance.agreement.HttpTest - /index
+17:18:51.100 [nioEventLoopGroup-3-1] DEBUG io.netty.handler.logging.LoggingHandler - [id: 0x111f9c13, L:/127.0.0.1:8080 - R:/127.0.0.1:59211] WRITE: DefaultFullHttpResponse(decodeResult: success, version: HTTP/1.1, content: UnpooledByteBufAllocator$InstrumentedUnpooledUnsafeHeapByteBuf(ridx: 0, widx: 23, cap: 64))
+HTTP/1.1 200 OK
+content-length: 23, 23B
+         +-------------------------------------------------+
+         |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |
++--------+-------------------------------------------------+----------------+
+|00000000| 3c 68 31 3e 20 48 65 6c 6c 6f 2c 20 57 6f 72 6c |<h1> Hello, Worl|
+|00000010| 64 21 3c 2f 68 31 3e                            |d!</h1>         |
++--------+-------------------------------------------------+----------------+
+```
