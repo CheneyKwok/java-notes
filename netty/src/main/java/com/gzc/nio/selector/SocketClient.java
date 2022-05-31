@@ -9,11 +9,9 @@ public class SocketClient {
 
     public static void main(String[] args) throws IOException {
         SocketChannel client = SocketChannel.open();
-
-        client.connect(new InetSocketAddress(7777));
-
-        client.write(StandardCharsets.UTF_8.encode("aaaabbbbccccddd3333\n"));
-
+        client.connect(new InetSocketAddress("127.0.0.1",9002));
+        client.configureBlocking(false);
+        client.write(StandardCharsets.UTF_8.encode("aaaabbbbccc333\n"));
         System.in.read();
 
     }
