@@ -5,6 +5,9 @@ import io.netty.channel.Channel;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 聊天组会话管理接口
+ */
 public interface GroupSession {
 
     /**
