@@ -1,6 +1,6 @@
 package com.gzc.netty.advance.agreement.codec;
 
-import com.gzc.netty.advance.agreement.message.LoginRequestMessage;
+import com.gzc.netty.chatroom.message.LoginRequestMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.embedded.EmbeddedChannel;

@@ -1,4 +1,4 @@
-package com.gzc.netty.advance.agreement.message;
+package com.gzc.netty.chatroom.message;
 
 public class PingMessage extends Message {
     @Override

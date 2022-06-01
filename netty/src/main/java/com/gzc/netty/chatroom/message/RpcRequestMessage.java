@@ -1,4 +1,4 @@
-package com.gzc.netty.advance.agreement.message;
+package com.gzc.netty.chatroom.message;
 
 import lombok.Getter;
 import lombok.ToString;
