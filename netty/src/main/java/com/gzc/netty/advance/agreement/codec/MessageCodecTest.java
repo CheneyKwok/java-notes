@@ -12,19 +12,15 @@ import lombok.extern.slf4j.Slf4j;
 public class MessageCodecTest {
 
     public static void main(String[] args) throws Exception {
-//        EmbeddedChannel channel = new EmbeddedChannel(new MessageCodec(), new LoggingHandler(LogLevel.DEBUG));
-//        // encode
-//        LoginRequestMessage message = new LoginRequestMessage("zhangsan", "123456");
-//        channel.writeOutbound(message);
-//
-//        //decode
-//        ByteBuf buf = ByteBufAllocator.DEFAULT.buffer();
-//        new MessageCodec().encode(null, message, buf);
-//        channel.writeInbound(buf);
-        byte[] bytes = {2,3,4,5};
+        EmbeddedChannel channel = new EmbeddedChannel(new MessageCodec(), new LoggingHandler(LogLevel.DEBUG));
+        // encode
+        LoginRequestMessage message = new LoginRequestMessage("zhangsan", "123456");
+        channel.writeOutbound(message);
+
+        //decode
         ByteBuf buf = ByteBufAllocator.DEFAULT.buffer();
-        buf.writeBytes(bytes);
-        log.info("{}", buf.readInt());
+        new MessageCodec().encode(null, message, buf);
+        channel.writeInbound(buf);
 
     }
 }
