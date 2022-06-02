@@ -1,4 +1,4 @@
-package com.gzc.netty.chatroom.service;
+package com.gzc.netty.chatroom.server.service;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

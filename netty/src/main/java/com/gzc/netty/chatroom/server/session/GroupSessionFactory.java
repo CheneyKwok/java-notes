@@ -1,10 +1,10 @@
-package com.gzc.netty.chatroom.server;
+package com.gzc.netty.chatroom.server.session;
 
 public class GroupSessionFactory {
 
     private static GroupSession session = new GroupSessionMemoryImpl();
 
-    private static GroupSession getGroupSession() {
+    public static GroupSession getGroupSession() {
         return session;
     }
 }

@@ -1,4 +1,4 @@
-package com.gzc.netty.chatroom.server;
+package com.gzc.netty.chatroom.server.session;
 
 import io.netty.channel.Channel;
 

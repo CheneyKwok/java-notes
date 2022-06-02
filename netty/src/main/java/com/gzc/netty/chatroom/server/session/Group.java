@@ -1,4 +1,4 @@
-package com.gzc.netty.chatroom.server;
+package com.gzc.netty.chatroom.server.session;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

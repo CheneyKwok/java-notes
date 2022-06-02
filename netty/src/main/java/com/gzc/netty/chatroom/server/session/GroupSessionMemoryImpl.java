@@ -1,12 +1,12 @@
-package com.gzc.netty.chatroom.server;
+package com.gzc.netty.chatroom.server.session;
 
 import io.netty.channel.Channel;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class GroupSessionMemoryImpl implements GroupSession{
 
@@ -50,6 +50,11 @@ public class GroupSessionMemoryImpl implements GroupSession{
 
     @Override
     public List<Channel> getMembersChannel(String name) {
-        return null;
+        return groupMap
+                .get(name)
+                .getMembers()
+                .stream()
+                .map(e -> SessionFactory.getSession().getChannel(e))
+                .collect(Collectors.toList());
     }
 }
