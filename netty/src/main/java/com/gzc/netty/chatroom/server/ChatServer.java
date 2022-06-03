@@ -2,9 +2,7 @@ package com.gzc.netty.chatroom.server;
 
 import com.gzc.netty.chatroom.protocol.MessageCodecSharable;
 import com.gzc.netty.chatroom.protocol.ProtocolFrameDecoder;
-import com.gzc.netty.chatroom.server.handler.ChatRequestMessageHandler;
-import com.gzc.netty.chatroom.server.handler.GroupCreateRequestMessageHandler;
-import com.gzc.netty.chatroom.server.handler.LoginRequestMessageHandler;
+import com.gzc.netty.chatroom.server.handler.*;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -25,6 +23,11 @@ public class ChatServer {
         LoginRequestMessageHandler loginHandler = new LoginRequestMessageHandler();
         ChatRequestMessageHandler chatHandler = new ChatRequestMessageHandler();
         GroupCreateRequestMessageHandler groupCreateHandler = new GroupCreateRequestMessageHandler();
+        final GroupJoinRequestMessageHandler groupJoinHandler = new GroupJoinRequestMessageHandler();
+        final GroupChatRequestMessageHandler groupChatHandler = new GroupChatRequestMessageHandler();
+        final GroupMembersRequestMessageHandler groupMembersHandler = new GroupMembersRequestMessageHandler();
+        final GroupQuitRequestMessageHandler groupQuitHandler = new GroupQuitRequestMessageHandler();
+        final QuitHandler quitHandler = new QuitHandler();
         try {
             ChannelFuture channelFuture = new ServerBootstrap()
                     .group(boss, worker)
@@ -38,7 +41,12 @@ public class ChatServer {
 //                                    .addLast(loggingHandler)
                                     .addLast(loginHandler)
                                     .addLast(chatHandler)
-                                    .addLast(groupCreateHandler);
+                                    .addLast(groupCreateHandler)
+                                    .addLast(groupJoinHandler)
+                                    .addLast(groupChatHandler)
+                                    .addLast(groupMembersHandler)
+                                    .addLast(groupQuitHandler)
+                                    .addLast(quitHandler);
                         }
                     })
                     .bind(8888)
