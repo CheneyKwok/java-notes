@@ -10,6 +10,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.timeout.IdleStateHandler;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -28,6 +29,7 @@ public class ChatServer {
         final GroupMembersRequestMessageHandler groupMembersHandler = new GroupMembersRequestMessageHandler();
         final GroupQuitRequestMessageHandler groupQuitHandler = new GroupQuitRequestMessageHandler();
         final QuitHandler quitHandler = new QuitHandler();
+        final ServerIdleStateHandler stateCheckHandler = new ServerIdleStateHandler();
         try {
             ChannelFuture channelFuture = new ServerBootstrap()
                     .group(boss, worker)
@@ -36,6 +38,8 @@ public class ChatServer {
                         @Override
                         protected void initChannel(NioSocketChannel ch) throws Exception {
                             ch.pipeline()
+                                    .addLast(new IdleStateHandler(5, 0, 0))
+                                    .addLast(stateCheckHandler)
                                     .addLast(new ProtocolFrameDecoder())
                                     .addLast(messageCodec)
 //                                    .addLast(loggingHandler)
@@ -47,6 +51,7 @@ public class ChatServer {
                                     .addLast(groupMembersHandler)
                                     .addLast(groupQuitHandler)
                                     .addLast(quitHandler);
+
                         }
                     })
                     .bind(8888)
