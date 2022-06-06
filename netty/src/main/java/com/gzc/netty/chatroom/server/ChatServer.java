@@ -1,5 +1,6 @@
 package com.gzc.netty.chatroom.server;
 
+import com.gzc.netty.chatroom.config.Config;
 import com.gzc.netty.chatroom.protocol.MessageCodecSharable;
 import com.gzc.netty.chatroom.protocol.ProtocolFrameDecoder;
 import com.gzc.netty.chatroom.server.handler.*;
@@ -54,7 +55,7 @@ public class ChatServer {
 
                         }
                     })
-                    .bind(8888)
+                    .bind(Config.getServerPort())
                     .sync();
             log.info("server start success [{}]", channelFuture.channel().localAddress());
             channelFuture.channel().closeFuture().sync();

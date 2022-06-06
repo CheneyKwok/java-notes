@@ -1,5 +1,6 @@
 package com.gzc.netty.chatroom.client;
 
+import com.gzc.netty.chatroom.config.Config;
 import com.gzc.netty.chatroom.message.*;
 import com.gzc.netty.chatroom.protocol.MessageCodecSharable;
 import com.gzc.netty.chatroom.protocol.ProtocolFrameDecoder;
@@ -120,7 +121,7 @@ public class ChatClient {
                                     });
                         }
                     })
-                    .connect(new InetSocketAddress(8888));
+                    .connect(new InetSocketAddress(Config.getServerPort()));
             Channel channel = channelFuture.sync().channel();
             log.info("connected {}", channel);
             channel.closeFuture().sync();
