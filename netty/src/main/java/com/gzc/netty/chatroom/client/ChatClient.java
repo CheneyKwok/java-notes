@@ -35,6 +35,7 @@ public class ChatClient {
             ChannelFuture channelFuture = new Bootstrap()
                     .group(worker)
                     .channel(NioSocketChannel.class)
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000)
                     .handler(new ChannelInitializer<NioSocketChannel>() {
                         @Override
                         protected void initChannel(NioSocketChannel ch) throws Exception {
@@ -99,7 +100,8 @@ public class ChatClient {
                                                         case "quit":
                                                             ctx.channel().close();
                                                             return;
-                                                        default:break;
+                                                        default:
+                                                            break;
 
                                                     }
                                                 }
