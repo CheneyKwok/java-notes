@@ -5,6 +5,7 @@ import com.gzc.netty.chatroom.protocol.MessageCodecSharable;
 import com.gzc.netty.chatroom.protocol.ProtocolFrameDecoder;
 import com.gzc.netty.chatroom.server.handler.*;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -57,6 +58,7 @@ public class ChatServer {
                     })
                     .bind(Config.getServerPort())
                     .sync();
+
             log.info("server start success [{}]", channelFuture.channel().localAddress());
             channelFuture.channel().closeFuture().sync();
         } catch (Exception e) {
