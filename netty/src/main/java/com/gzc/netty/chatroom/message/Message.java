@@ -1,12 +1,16 @@
 package com.gzc.netty.chatroom.message;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
 @Data
+@NoArgsConstructor
+@SuperBuilder
 public abstract class Message implements Serializable {
 
     /**

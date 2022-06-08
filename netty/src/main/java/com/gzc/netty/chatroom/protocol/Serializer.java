@@ -1,11 +1,12 @@
 package com.gzc.netty.chatroom.protocol;
 
-import com.google.gson.Gson;
+import com.google.gson.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -50,17 +51,36 @@ public interface Serializer {
         Json {
             @Override
             public <T> T deserialize(Class<T> clazz, byte[] target) {
-                String string = new String(target, StandardCharsets.UTF_8);
-                return new Gson().fromJson(string, clazz);
+                Gson gson = new GsonBuilder().registerTypeAdapter(Class.class, new ClassCodec()).create();
+                return gson.fromJson(new String(target, StandardCharsets.UTF_8), clazz);
             }
 
             @Override
             public <T> byte[] serialize(T target) {
+                Gson gson = new GsonBuilder().registerTypeAdapter(Class.class, new ClassCodec()).create();
 
-                return new Gson().toJson(target).getBytes(StandardCharsets.UTF_8);
+                return gson.toJson(target).getBytes(StandardCharsets.UTF_8);
             }
         }
 
+    }
+
+    class ClassCodec implements JsonSerializer<Class<?>>, JsonDeserializer<Class<?>> {
+        @Override
+        public Class<?> deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+            try {
+                String str = jsonElement.getAsString();
+                return Class.forName(str);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public JsonElement serialize(Class<?> clazz, Type type, JsonSerializationContext jsonSerializationContext) {
+
+            return new JsonPrimitive(clazz.getName());
+        }
     }
 
 }

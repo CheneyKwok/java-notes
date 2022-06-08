@@ -21,6 +21,10 @@ public abstract class Config {
         }
     }
 
+    public static Properties getProperties() {
+        return properties;
+    }
+
     public static int getServerPort() {
         String value = properties.getProperty("server.port");
         return Objects.isNull(value) ? 8080 : Integer.parseInt(value);

@@ -27,14 +27,15 @@ public class RpcServer {
             Channel channel = new ServerBootstrap()
                     .group(boss, worker)
                     .channel(NioServerSocketChannel.class)
+                    // 设置TCP三次握手的全连接队列的大小
                     .option(ChannelOption.SO_BACKLOG, 128)
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) throws Exception {
                             ch.pipeline()
                                     .addLast(new ProtocolFrameDecoder())
-                                    .addLast(loggingHandler)
                                     .addLast(messageCodec)
+                                    .addLast(loggingHandler)
                                     .addLast(rpcHandler);
                         }
                     }).bind(Config.getServerPort())
