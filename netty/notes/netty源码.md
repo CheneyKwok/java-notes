@@ -309,3 +309,227 @@ protected void doBeginRead() throws Exception {
         selectionKey.interestOps(interestOps | readInterestOp);
     }
 }
+```
+
+## EventLoop剖析
+
+### NioEventLoopGroup 的重要组成
+
+selector、线程、任务队列，NioEventLoopGroup 既会处理 IO 事件，也会处理普通任务和定时任务
+
+```java
+private Selector selector;          // netty 对原生 selecotr 包装后的 selecotr
+private Selector unwrappedSelector; // nio 原生 selecotr
+
+private final Queue<Runnable> taskQueue;
+private volatile Thread thread;
+
+PriorityQueue<ScheduledFutureTask<?>> scheduledTaskQueue; // 处理定时任务用
+```
+
+### selecotr 何时创建
+
+在构造方法时被创建
+
+```java
+NioEventLoop() {
+        ...
+        final SelectorTuple selectorTuple = openSelector();
+        this.selector = selectorTuple.selector;
+        this.unwrappedSelector = selectorTuple.unwrappedSelector;
+    }
+
+private SelectorTuple openSelector() {
+       final Selector unwrappedSelector;
+        try {
+            unwrappedSelector = provider.openSelector();
+        } catch (IOException e) {
+            throw new ChannelException("failed to open a new selector", e);
+        }
+        ....
+}
+```
+
+#### selecotr 为何有两个 selecotr 成员
+
+unwrappedSelector 为 nio 原生 selector，netty 对其进行了封装，将 set 集合中 selectedKeys 放入了数组中，提高了遍历的性能
+
+### eventLoop 中的 nio 线程在何时启动
+
+- 当首次调用 execute() 时，会将当前 executor 执行器线程赋值给 nio 的 thread
+
+- 通过 state 状态位控制线程只会启动一次
+
+```java
+    private void execute(Runnable task, boolean immediate) {
+        boolean inEventLoop = inEventLoop();
+        addTask(task);
+        if (!inEventLoop) {
+            startThread();
+            ...
+    }
+
+    private void startThread() {
+        if (state == ST_NOT_STARTED) {
+            if (STATE_UPDATER.compareAndSet(this, ST_NOT_STARTED, ST_STARTED)) {
+                boolean success = false;
+                try {
+                    doStartThread();
+                    success = true;
+                } finally {
+                    if (!success) {
+                        STATE_UPDATER.compareAndSet(this, ST_STARTED, ST_NOT_STARTED);
+                    }
+                }
+            }
+        }
+    }
+
+private void doStartThread() {
+    assert thread == null;
+    executor.execute(new Runnable() {
+        @Override
+        public void run() {
+            thread = Thread.currentThread();
+            ...
+    
+```
+
+### 提交普通任务会不会结束 select 阻塞
+
+会调用 wakeup 唤醒 selecotr，结束 select 阻塞
+
+```java
+private void execute(Runnable task, boolean immediate) {
+    boolean inEventLoop = inEventLoop();
+    addTask(task);
+    if (!inEventLoop) {
+        startThread();
+        if (isShutdown()) {
+            boolean reject = false;
+            try {
+                if (removeTask(task)) {
+                    reject = true;
+                }
+            } catch (UnsupportedOperationException e) {
+
+            }
+            if (reject) {
+                reject();
+            }
+        }
+    }
+    if (!addTaskWakesUp && immediate) {
+        wakeup(inEventLoop);
+    }
+}
+
+// io.netty.channel.nio.NioEventLoop#wakeup
+
+protected void wakeup(boolean inEventLoop) {
+    if (!inEventLoop && nextWakeupNanos.getAndSet(AWAKE) != AWAKE) {
+        selector.wakeup();
+    }
+}
+```
+
+### wakeup 方法中的代码如何理解， nextWakeupNanos 变量的作用是什么
+
+EventLoop 线程启动后，以 for 死循环的方式处理 IO 事件及任务队列中的任务。其中一个问题是，如何管理任务队列中任务堆积的问题，即如果一直阻塞在 IO 上，任务可能永远得不到执行
+
+- lazyExecute(Runnable task)
+  
+  该方法不会去唤醒阻塞在 IO 上的线程，即把任务加入到任务队列中即返回
+
+- execute(Runnable task, boolean immediate)
+  
+  该方法提供了两种机制来判断是否需要立即唤醒
+
+  - 如果 task 类型是 LazyRunnable，则类似 lazyExecute
+  - 如果 task 类型不是 LazyRunnable（`execute(task, !(task instanceof LazyRunnable) && wakesUpForTask(task))`），则会调用 wakesUpForTask(task) 返回 true，即立即唤醒阻塞在 IO 上的线程。wakesUpForTask() 可以被重载，用于定制唤醒逻辑，默认返回 true 立即唤醒
+
+唤醒控制流程
+
+```java
+// 当用户要求立即唤醒，且添加任务时不能自动唤醒 EventLoop 线程时，执行唤醒逻方法 wakeup()
+if (!addTaskWakesUp && immediate) {
+    wakeup(inEventLoop);
+}
+```
+
+addTaskWakesUp 为 boolean 类型变量，在创建 EventLoop 时指定，用于标识 EventLoop 中的线程在添加任务时，是否会自动唤醒（一种典型的场景就是 Java 的阻塞队列，生产者添加任务时，消费者会唤醒获取到任务）
+
+immediate 标识是否需要立即唤醒
+
+唤醒方法：wakeup(boolean inEventLoop)
+
+NioEventLoop 中实现
+
+```java
+protected void wakeup(boolean inEventLoop) {
+    if (!inEventLoop && nextWakeupNanos.getAndSet(AWAKE) != AWAKE) {
+        selector.wakeup();
+    }
+}
+
+private final AtomicLong nextWakeupNanos = new AtomicLong(AWAKE);
+```
+
+nextWakeupNanos 是定义在 EventLoop 类中的一个属性，用于记录 EventLoop 线程需唤醒的时间点，`nextWakeupNanos.set(curDeadlineNanos)`，该时间点为 scheduledTaskQueue 下一个任务的到期时间
+
+所以 nextWakeupNanos 不为 AWAKE(-1) 则表示有任务需要执行，即需要唤醒 EventLoop 线程
+
+### 每次循环时，什么时候会进入 SelectStrategy.SELECT 分支
+
+- 当没有任务时，才会进入 SelectStrategy.SELECT 分支阻塞
+- 当有任务时，会调用 selectNow 方法，顺表拿到 IO 事件与任务一起处理了
+
+```java
+for (;;) {
+    try {
+        int strategy;
+        try {
+            strategy = selectStrategy.calculateStrategy(selectNowSupplier, hasTasks());
+            switch (strategy) {
+            case SelectStrategy.CONTINUE:
+                continue;
+            case SelectStrategy.BUSY_WAIT:
+                // fall-through to SELECT since the busy-wait is not supported with NIO
+            case SelectStrategy.SELECT:
+            ...
+```
+
+```java
+
+public int calculateStrategy(IntSupplier selectSupplier, boolean hasTasks) throws Exception {
+    return hasTasks ? selectSupplier.get() : SelectStrategy.SELECT;
+}
+
+private final IntSupplier selectNowSupplier = new IntSupplier() {
+    @Override
+    public int get() throws Exception {
+        return selectNow();
+    }
+}
+
+int selectNow() throws IOException {
+    return selector.selectNow();
+}
+```
+
+#### 何时会 select 阻塞，阻塞多久
+
+```java
+if (!hasTasks()) {
+    strategy = select(curDeadlineNanos);
+}
+```
+
+### nio 空轮询 bug 在哪里体现，如何解决
+
+### ioRatio 控制什么，设置为 100 有何作用
+
+### selectedKeys 优化是怎么回事
+
+### 在哪里区分不同事件类型
+
