@@ -877,3 +877,360 @@ content-length: 23, 23B
 #### 编解码器
 
 设计一个登录请求消息和登录响应消息，并使用 Netty 完成收发
+
+```java
+@Slf4j
+public class MessageCodec extends ByteToMessageCodec<Message> {
+
+    @Override
+    protected void encode(ChannelHandlerContext ctx, Message msg, ByteBuf out) throws Exception {
+        // 1. 4 字节的魔数
+        out.writeBytes(new byte[]{1, 2, 3, 4});
+        // 2. 1 字节的版本,
+        out.writeByte(1);
+        // 3. 1 字节的序列化方式 jdk 0 , json 1
+        out.writeByte(0);
+        // 4. 1 字节的指令类型
+        out.writeByte(msg.getMessageType());
+        // 5. 4 个字节
+        out.writeInt(msg.getSequenceId());
+        // 无意义，对齐填充
+        out.writeByte(0xff);
+        // 6. 获取内容的字节数组
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeObject(msg);
+        byte[] bytes = bos.toByteArray();
+        // 7. 长度
+        out.writeInt(bytes.length);
+        // 8. 写入内容
+        out.writeBytes(bytes);
+    }
+
+    @Override
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+        int magicNum = in.readInt();
+        byte version = in.readByte();
+        byte serializerType = in.readByte();
+        byte messageType = in.readByte();
+        int sequenceId = in.readInt();
+        in.readByte();
+        int length = in.readInt();
+        byte[] bytes = new byte[length];
+        in.readBytes(bytes, 0, length);
+        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
+        Message message = (Message) ois.readObject();
+        log.debug("{}, {}, {}, {}, {}, {}", magicNum, version, serializerType, messageType, sequenceId, length);
+        log.debug("{}", message);
+        out.add(message);
+    }
+}
+```
+
+测试
+
+```java
+EmbeddedChannel channel = new EmbeddedChannel(
+    new LoggingHandler(),
+    new LengthFieldBasedFrameDecoder(
+        1024, 12, 4, 0, 0),
+    new MessageCodec()
+);
+// encode
+LoginRequestMessage message = new LoginRequestMessage("zhangsan", "123", "张三");
+//        channel.writeOutbound(message);
+// decode
+ByteBuf buf = ByteBufAllocator.DEFAULT.buffer();
+new MessageCodec().encode(null, message, buf);
+
+ByteBuf s1 = buf.slice(0, 100);
+ByteBuf s2 = buf.slice(100, buf.readableBytes() - 100);
+s1.retain(); // 引用计数 2
+channel.writeInbound(s1); // release 1
+channel.writeInbound(s2);
+```
+
+#### 💡 什么时候可以加 @Sharable
+
+- 当 handler 不保存状态时，就可以安全地在多线程下被共享
+- 但要注意对于编解码器类，不能继承 ByteToMessageCodec 或 CombinedChannelDuplexHandler 父类，他们的构造方法对 @Sharable 有限制
+- 如果能确保编解码器不会保存状态，可以继承 MessageToMessageCodec 父类
+
+```java
+@Slf4j
+@ChannelHandler.Sharable
+/**
+ * 必须和 LengthFieldBasedFrameDecoder 一起使用，确保接到的 ByteBuf 消息是完整的
+ */
+public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message> {
+    @Override
+    protected void encode(ChannelHandlerContext ctx, Message msg, List<Object> outList) throws Exception {
+        ByteBuf out = ctx.alloc().buffer();
+        // 1. 4 字节的魔数
+        out.writeBytes(new byte[]{1, 2, 3, 4});
+        // 2. 1 字节的版本,
+        out.writeByte(1);
+        // 3. 1 字节的序列化方式 jdk 0 , json 1
+        out.writeByte(0);
+        // 4. 1 字节的指令类型
+        out.writeByte(msg.getMessageType());
+        // 5. 4 个字节
+        out.writeInt(msg.getSequenceId());
+        // 无意义，对齐填充
+        out.writeByte(0xff);
+        // 6. 获取内容的字节数组
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeObject(msg);
+        byte[] bytes = bos.toByteArray();
+        // 7. 长度
+        out.writeInt(bytes.length);
+        // 8. 写入内容
+        out.writeBytes(bytes);
+        outList.add(out);
+    }
+
+    @Override
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+        int magicNum = in.readInt();
+        byte version = in.readByte();
+        byte serializerType = in.readByte();
+        byte messageType = in.readByte();
+        int sequenceId = in.readInt();
+        in.readByte();
+        int length = in.readInt();
+        byte[] bytes = new byte[length];
+        in.readBytes(bytes, 0, length);
+        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
+        Message message = (Message) ois.readObject();
+        log.debug("{}, {}, {}, {}, {}, {}", magicNum, version, serializerType, messageType, sequenceId, length);
+        log.debug("{}", message);
+        out.add(message);
+    }
+}
+```
+
+### 聊天室业务-单聊
+
+服务器端将 handler 独立出来
+
+登录 handler
+
+```java
+@ChannelHandler.Sharable
+public class LoginRequestMessageHandler extends SimpleChannelInboundHandler<LoginRequestMessage> {
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, LoginRequestMessage msg) throws Exception {
+        String username = msg.getUsername();
+        String password = msg.getPassword();
+        boolean login = UserServiceFactory.getUserService().login(username, password);
+        LoginResponseMessage message;
+        if(login) {
+            SessionFactory.getSession().bind(ctx.channel(), username);
+            message = new LoginResponseMessage(true, "登录成功");
+        } else {
+            message = new LoginResponseMessage(false, "用户名或密码不正确");
+        }
+        ctx.writeAndFlush(message);
+    }
+}
+```
+
+单聊 handler
+
+```java
+@ChannelHandler.Sharable
+public class ChatRequestMessageHandler extends SimpleChannelInboundHandler<ChatRequestMessage> {
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, ChatRequestMessage msg) throws Exception {
+        String to = msg.getTo();
+        Channel channel = SessionFactory.getSession().getChannel(to);
+        // 在线
+        if(channel != null) {
+            channel.writeAndFlush(new ChatResponseMessage(msg.getFrom(), msg.getContent()));
+        }
+        // 不在线
+        else {
+            ctx.writeAndFlush(new ChatResponseMessage(false, "对方用户不存在或者不在线"));
+        }
+    }
+}
+```
+
+### 3.4 聊天室业务-群聊
+
+创建群聊
+
+```java
+@ChannelHandler.Sharable
+public class GroupCreateRequestMessageHandler extends SimpleChannelInboundHandler<GroupCreateRequestMessage> {
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, GroupCreateRequestMessage msg) throws Exception {
+        String groupName = msg.getGroupName();
+        Set<String> members = msg.getMembers();
+        // 群管理器
+        GroupSession groupSession = GroupSessionFactory.getGroupSession();
+        Group group = groupSession.createGroup(groupName, members);
+        if (group == null) {
+            // 发生成功消息
+            ctx.writeAndFlush(new GroupCreateResponseMessage(true, groupName + "创建成功"));
+            // 发送拉群消息
+            List<Channel> channels = groupSession.getMembersChannel(groupName);
+            for (Channel channel : channels) {
+                channel.writeAndFlush(new GroupCreateResponseMessage(true, "您已被拉入" + groupName));
+            }
+        } else {
+            ctx.writeAndFlush(new GroupCreateResponseMessage(false, groupName + "已经存在"));
+        }
+    }
+}
+```
+
+群聊
+
+```java
+@ChannelHandler.Sharable
+public class GroupChatRequestMessageHandler extends SimpleChannelInboundHandler<GroupChatRequestMessage> {
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, GroupChatRequestMessage msg) throws Exception {
+        List<Channel> channels = GroupSessionFactory.getGroupSession()
+                .getMembersChannel(msg.getGroupName());
+
+        for (Channel channel : channels) {
+            channel.writeAndFlush(new GroupChatResponseMessage(msg.getFrom(), msg.getContent()));
+        }
+    }
+}
+```
+
+加入群聊
+
+```java
+@ChannelHandler.Sharable
+public class GroupJoinRequestMessageHandler extends SimpleChannelInboundHandler<GroupJoinRequestMessage> {
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, GroupJoinRequestMessage msg) throws Exception {
+        Group group = GroupSessionFactory.getGroupSession().joinMember(msg.getGroupName(), msg.getUsername());
+        if (group != null) {
+            ctx.writeAndFlush(new GroupJoinResponseMessage(true, msg.getGroupName() + "群加入成功"));
+        } else {
+            ctx.writeAndFlush(new GroupJoinResponseMessage(true, msg.getGroupName() + "群不存在"));
+        }
+    }
+}
+```
+
+退出群聊
+
+```java
+@ChannelHandler.Sharable
+public class GroupQuitRequestMessageHandler extends SimpleChannelInboundHandler<GroupQuitRequestMessage> {
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, GroupQuitRequestMessage msg) throws Exception {
+        Group group = GroupSessionFactory.getGroupSession().removeMember(msg.getGroupName(), msg.getUsername());
+        if (group != null) {
+            ctx.writeAndFlush(new GroupJoinResponseMessage(true, "已退出群" + msg.getGroupName()));
+        } else {
+            ctx.writeAndFlush(new GroupJoinResponseMessage(true, msg.getGroupName() + "群不存在"));
+        }
+    }
+}
+```
+
+查看成员
+
+```java
+@ChannelHandler.Sharable
+public class GroupMembersRequestMessageHandler extends SimpleChannelInboundHandler<GroupMembersRequestMessage> {
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, GroupMembersRequestMessage msg) throws Exception {
+        Set<String> members = GroupSessionFactory.getGroupSession()
+                .getMembers(msg.getGroupName());
+        ctx.writeAndFlush(new GroupMembersResponseMessage(members));
+    }
+}
+```
+
+### 3.5 聊天室业务-退出
+
+```java
+@Slf4j
+@ChannelHandler.Sharable
+public class QuitHandler extends ChannelInboundHandlerAdapter {
+
+    // 当连接断开时触发 inactive 事件
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        SessionFactory.getSession().unbind(ctx.channel());
+        log.debug("{} 已经断开", ctx.channel());
+    }
+
+    // 当出现异常时触发
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        SessionFactory.getSession().unbind(ctx.channel());
+        log.debug("{} 已经异常断开 异常是{}", ctx.channel(), cause.getMessage());
+    }
+}
+```
+
+### 聊天室业务-空闲检测
+
+#### 连接假死
+
+原因
+
+- 网络设备出现故障，例如网卡，机房等，底层的 TCP 连接已经断开了，但应用程序没有感知到，仍然占用着资源。
+- 公网网络不稳定，出现丢包。如果连续出现丢包，这时现象就是客户端数据发不出去，服务端也一直收不到数据，就这么一直耗着
+- 应用程序线程阻塞，无法进行数据读写
+
+问题
+
+- 假死的连接占用的资源不能自动释放
+- 向假死的连接发送数据，得到的反馈是发送超时
+
+服务器端解决
+
+- 怎么判断客户端连接是否假死呢？如果能收到客户端数据，说明没有假死。因此策略就可以定为，每隔一段时间就检查这段时间内是否接收到客户端数据，没有就可以判定为连接假死
+
+```java
+// 用来判断是不是 读空闲时间过长，或 写空闲时间过长
+// 5s 内如果没有收到 channel 的数据，会触发一个 IdleState#READER_IDLE 事件
+ch.pipeline().addLast(new IdleStateHandler(5, 0, 0));
+// ChannelDuplexHandler 可以同时作为入站和出站处理器
+ch.pipeline().addLast(new ChannelDuplexHandler() {
+    // 用来触发特殊事件
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception{
+        IdleStateEvent event = (IdleStateEvent) evt;
+        // 触发了读空闲事件
+        if (event.state() == IdleState.READER_IDLE) {
+            log.debug("已经 5s 没有读到数据了");
+            ctx.channel().close();
+        }
+    }
+});
+```
+
+客户端定时心跳
+
+- 客户端可以定时向服务器端发送数据，只要这个时间间隔小于服务器定义的空闲检测的时间间隔，那么就能防止前面提到的误判，客户端可以定义如下心跳处理器
+
+```java
+// 用来判断是不是 读空闲时间过长，或写空闲时间过长
+// 3s 内如果没有向服务器写数据，会触发一个 IdleState#WRITER_IDLE 事件
+ch.pipeline().addLast(new IdleStateHandler(0, 3, 0));
+// ChannelDuplexHandler 可以同时作为入站和出站处理器
+ch.pipeline().addLast(new ChannelDuplexHandler() {
+    // 用来触发特殊事件
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception{
+        IdleStateEvent event = (IdleStateEvent) evt;
+        // 触发了写空闲事件
+        if (event.state() == IdleState.WRITER_IDLE) {
+            //                                log.debug("3s 没有写数据了，发送一个心跳包");
+            ctx.writeAndFlush(new PingMessage());
+        }
+    }
+});
+```

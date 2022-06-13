@@ -517,7 +517,11 @@ int selectNow() throws IOException {
 }
 ```
 
-#### 何时会 select 阻塞，阻塞多久
+#### 何时会 select 阻塞
+
+没有定时任务时
+
+`io.netty.channel.nio.NioEventLoop#run`
 
 ```java
 if (!hasTasks()) {
@@ -527,9 +531,358 @@ if (!hasTasks()) {
 
 ### nio 空轮询 bug 在哪里体现，如何解决
 
+`io.netty.channel.nio.NioEventLoop#unexpectedSelectorWakeup`
+
+```java
+if (SELECTOR_AUTO_REBUILD_THRESHOLD > 0 && selectCnt >= SELECTOR_AUTO_REBUILD_THRESHOLD) {
+    rebuildSelector();
+    return true;
+}
+```
+
+jdk 在 linux 的 selector，重新创建了一个 selector，替换了旧的 selector
+
 ### ioRatio 控制什么，设置为 100 有何作用
 
-### selectedKeys 优化是怎么回事
+ioRatio 控制处理 io 事件所占用的时间比例，例如 ioTime 代表执行 io 事件处理耗费的时间为 8s，运行任务的时间则为 2s
+
+`io.netty.channel.nio.NioEventLoop#run`
+
+```java
+if (ioRatio == 100) {
+    try {
+        if (strategy > 0) {
+            processSelectedKeys();
+        }
+    } finally {
+        //  如果 ioRatio 设置为 100，则任务的执行不会超时
+        ranTasks = runAllTasks();
+    }
+} else if (strategy > 0) {
+    final long ioStartTime = System.nanoTime();
+    try {
+        processSelectedKeys();
+    } finally {
+        // Ensure we always run tasks.
+        final long ioTime = System.nanoTime() - ioStartTime;
+        ranTasks = runAllTasks(ioTime * (100 - ioRatio) / ioRatio);
+    }
+} else {
+    ranTasks = runAllTasks(0); // This will run the minimum number of tasks
+}
+```
 
 ### 在哪里区分不同事件类型
 
+`io.netty.channel.nio.NioEventLoop#processSelectedKey()`
+
+```java
+private void processSelectedKey(SelectionKey k, AbstractNioChannel ch) {
+    final AbstractNioChannel.NioUnsafe unsafe = ch.unsafe();
+    ...
+    try {
+        int readyOps = k.readyOps();
+        // We first need to call finishConnect() before try to trigger a read(...) or write(...) as otherwi
+        // the NIO JDK channel implementation may throw a NotYetConnectedException.
+        if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
+            // remove OP_CONNECT as otherwise Selector.select(..) will always return without blocking
+            // See https://github.com/netty/netty/issues/924
+            int ops = k.interestOps();
+            ops &= ~SelectionKey.OP_CONNECT;
+            k.interestOps(ops);
+            unsafe.finishConnect();
+        }
+        // Process OP_WRITE first as we may be able to write some queued buffers and so free memory.
+        if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+            // Call forceFlush which will also take care of clear the OP_WRITE once there is nothing left t
+            ch.unsafe().forceFlush();
+        }
+        // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
+        // to a spin loop
+        if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+            unsafe.read();
+        }
+    } catch (CancelledKeyException ignored) {
+        unsafe.close(unsafe.voidPromise());
+    }
+}
+```
+
+## accept 流程剖析
+
+`io.netty.channel.nio.NioEventLoop#processSelectedKey`
+
+```java
+if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0)
+    // readyOps = 16
+    unsafe.read();
+}
+```
+
+`io.netty.channel.nio.AbstractNioMessageChannel.NioMessageUnsafe#read`
+
+```java
+public void read() {
+    assert eventLoop().inEventLoop();
+    final ChannelConfig config = config();
+    final ChannelPipeline pipeline = pipeline();
+    final RecvByteBufAllocator.Handle allocHandle = unsafe().recvBufAllocHandle();
+    allocHandle.reset(config);
+    boolean closed = false;
+    Throwable exception = null;
+    try {
+        try {
+            do {
+                // 处理 accept
+                int localRead = doReadMessages(readBuf);
+                if (localRead == 0) {
+                    break;
+                }
+                if (localRead < 0) {
+                    closed = true;
+                    break;
+                }
+                allocHandle.incMessagesRead(localRead);
+            } while (continueReading(allocHandle));
+        } catch (Throwable t) {
+            exception = t;
+        }
+        int size = readBuf.size();
+        for (int i = 0; i < size; i ++) {
+            readPending = false;
+            // 将在 ServerSocketChannel 的数据 交给 pipelin 中 handler 处理，这里由 head -> acceptor -> tail 中的 acceptor 处理
+            pipeline.fireChannelRead(readBuf.get(i));
+        }
+        ...
+}
+```
+
+`io.netty.channel.socket.nio.NioServerSocketChannel#doReadMessages`
+
+```java
+protected int doReadMessages(List<Object> buf) throws Exception {
+    // accept
+    SocketChannel ch = SocketUtils.accept(javaChannel());
+    try {
+        if (ch != null) {
+            // 将 SocketChannel 包装为 NioSocketChannel，并设置 configureBlocking 为 false
+            buf.add(new NioSocketChannel(this, ch));
+            return 1;
+        }
+    } catch (Throwable t) {
+        try {
+            ch.close();
+        } catch (Throwable t2) {
+        }
+    }
+    return 0;
+}
+
+public static SocketChannel accept(final ServerSocketChannel serverSocketChannel) throws IOException {
+    try {
+        return AccessController.doPrivileged(new PrivilegedExceptionAction<SocketChannel>() {
+            @Override
+            public SocketChannel run() throws IOException {
+                return serverSocketChannel.accept();
+            }
+        });
+    } catch (PrivilegedActionException e) {
+        throw (IOException) e.getCause();
+    }
+}
+```
+
+`io.netty.bootstrap.ServerBootstrap.ServerBootstrapAcceptor#channelRead`
+
+ServerBootstrapAcceptor Handler 来继续处理 accept
+
+```java
+public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    final Channel child = (Channel) msg;
+    child.pipeline().addLast(childHandler);
+    setChannelOptions(child, childOptions, logger);
+    setAttributes(child, childAttrs);
+    try {
+        // 注册
+        childGroup.register(child).addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if (!future.isSuccess()) {
+                    forceClose(child, future.cause());
+                }
+            }
+        });
+    } catch (Throwable t) {
+        forceClose(child, t);
+    }
+}
+```
+
+`io.netty.channel.AbstractChannel.AbstractUnsafe#register`
+
+```java
+public final void register(EventLoop eventLoop, final ChannelPromise promise) {
+    ...
+    AbstractChannel.this.eventLoop = eventLoop;
+    if (eventLoop.inEventLoop()) {
+        register0(promise);
+    } else {
+        try {
+            // 当前是 ServerSocketChannel 的 eventLoop 线程，而 SocketChannel 需要用的新的 eventLoop 线程
+            eventLoop.execute(new Runnable() {
+                @Override
+                public void run() {
+                    register0(promise);
+                }
+            });
+        } catch (Throwable t) {
+            closeForcibly();
+            closeFuture.setClosed();
+            safeSetFailure(promise, t);
+        }
+    }
+}
+```
+
+`io.netty.channel.AbstractChannel.AbstractUnsafe#register0`
+
+```java
+private void register0(ChannelPromise promise) {
+    try {
+        if (!promise.setUncancellable() || !ensureOpen(promise)) {
+            return;
+        }
+        boolean firstRegistration = neverRegistered;
+        // 注册 SocketChannel
+        doRegister();
+        neverRegistered = false;
+        registered = true;
+        // 触发 SocketChannel 上的初始化事件 initChannel()
+        pipeline.invokeHandlerAddedIfNeeded();
+        if (isActive()) {
+            if (firstRegistration) {
+                // 继续传播，关注 read 事件
+                pipeline.fireChannelActive();
+            } else if (config().isAutoRead()) {
+                 beginRead();
+        }
+}
+    }
+}
+```
+
+`io.netty.channel.nio.AbstractNioChannel#doRegister`
+
+```java
+protected void doRegister() throws Exception {
+    boolean selected = false;
+    for (;;) {
+        try {
+            // 将 SocketChannel 注册到 selector 上，并绑定 NioSocketChannel
+            selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
+            return;
+        } catch (CancelledKeyException e) {
+            if (!selected) {
+                eventLoop().selectNow();
+                selected = true;
+            } else {
+                throw e;
+            }
+        }
+    }
+}
+```
+
+`io.netty.channel.DefaultChannelPipeline.HeadContext#readIfIsAutoRead`
+
+此时为 SocketChannel 的 head Handler
+
+```java
+private void readIfIsAutoRead() {
+    if (channel.config().isAutoRead()) {
+        // 处理读事件
+        channel.read();
+    }
+}
+```
+
+`io.netty.channel.nio.AbstractNioChannel#doBeginRead`
+
+```java
+protected void doBeginRead() throws Exception {
+    // Channel.read() or ChannelHandlerContext.read() was called
+    final SelectionKey selectionKey = this.selectionKey;
+    if (!selectionKey.isValid()) {
+        return;
+    }
+    readPending = true;
+    final int interestOps = selectionKey.interestOps();
+    if ((interestOps & readInterestOp) == 0) {
+        // 注册读事件 accept 流程结束
+        selectionKey.interestOps(interestOps | readInterestOp);
+    }
+}
+```
+
+## read 流程剖析
+
+`io.netty.channel.nio.NioEventLoop#processSelectedKey`
+
+```java
+if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0)
+    // readyOps = 1
+    unsafe.read();
+}
+```
+
+`io.netty.channel.nio.AbstractNioByteChannel.NioByteUnsafe#read`
+
+```java
+public final void read() {
+    final ChannelConfig config = config();
+    if (shouldBreakReadReady(config)) {
+        clearReadPending();
+        return;
+    }
+    final ChannelPipeline pipeline = pipeline();
+    final ByteBufAllocator allocator = config.getAllocator();
+    // 动态调整 ByteBuf 大小并强制使用直接内存
+    final RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();
+    allocHandle.reset(config);
+    ByteBuf byteBuf = null;
+    boolean close = false;
+    try {
+        do {
+            byteBuf = allocHandle.allocate(allocator);
+            allocHandle.lastBytesRead(doReadBytes(byteBuf));
+            if (allocHandle.lastBytesRead() <= 0) {
+                // nothing was read. release the buffer.
+                byteBuf.release();
+                byteBuf = null;
+                close = allocHandle.lastBytesRead() < 0;
+                if (close) {
+                    // There is nothing left to read as we received an EOF.
+                    readPending = false;
+                }
+                break;
+            }
+            allocHandle.incMessagesRead(1);
+            readPending = false;
+            // 交给流水线处理读事件
+            pipeline.fireChannelRead(byteBuf);
+            byteBuf = null;
+        } while (allocHandle.continueReading());
+        allocHandle.readComplete();
+        pipeline.fireChannelReadComplete();
+        if (close) {
+            closeOnRead(pipeline);
+        }
+    } catch (Throwable t) {
+        handleReadException(pipeline, byteBuf, t, close, allocHandle);
+    } finally {
+        if (!readPending && !config.isAutoRead()) {
+            removeReadOp();
+        }
+    }
+}
+```
