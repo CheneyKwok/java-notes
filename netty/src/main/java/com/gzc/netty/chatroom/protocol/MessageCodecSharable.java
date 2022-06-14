@@ -33,6 +33,7 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
             // 1 字节消息类型
             out.writeByte(msg.getMessageType());
             // 4 字节请求序号
+
             out.writeInt(msg.getSequenceId());
             // 1 字节 对齐填充用 无意义
             out.writeByte(0xff);
