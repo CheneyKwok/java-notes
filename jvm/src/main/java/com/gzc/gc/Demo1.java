@@ -11,10 +11,19 @@ public class Demo1 {
 
     // -Xms20M -Xmx20M -Xmn10M -XX:+UseSerialGC -XX:+PrintGCDetails -verbose:gc
     // XX:+UseSerialGC 使用指定的GC，不会去动态调整幸存区的大小
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         ArrayList<byte[]> list = new ArrayList<>();
-        list.add(new byte[_7MB]);
+//        list.add(new byte[_7MB]);
 //        list.add(new byte[_512KB]);
 //        list.add(new byte[_512KB]);
+//        list.add(new byte[_8MB]);
+
+        new Thread(() -> {
+            list.add(new byte[_8MB]);
+            list.add(new byte[_8MB]);
+        }).start();
+
+        System.out.println("sleep..........");
+        Thread.sleep(1000000000L);
     }
 }
