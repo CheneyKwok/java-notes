@@ -312,7 +312,7 @@ DELETE shopping/_doc/2   // 根据 ID 删除
 }
 ```
 
-## 条件查询
+## 条件查询 (query)
 
 ```java
 准备测试数据
@@ -905,13 +905,27 @@ GET bank/_search
 搜索 address 中包含 mill 的所有人的年龄分布和平均年龄
 
 ```java
-
-GET shopping/_search
+GET bank/_search
 {
-  "aggs": { // 操作类型：聚合
-    "price_group": {  // 名称
-      "terms": {      // 聚合类型：分组
-        "field": "price"  // 字段
+  "query": {
+    "match_phrase": {
+      "address": "mill"
+    }
+  },
+  "aggs": {
+    "age_agg": {
+      "terms": {  // terms 多值聚合，按照字段的值来动态构建桶
+        "field": "age"
+      }
+    },
+    "age_avg": {
+      "avg": {
+        "field": "age"
+      }
+    },
+    "balance_stats": {
+      "stats": {
+        "field": "balance"
       }
     }
   },
@@ -921,7 +935,7 @@ GET shopping/_search
 
 ```java
 {
-  "took" : 2,
+  "took" : 14,
   "timed_out" : false,
   "_shards" : {
     "total" : 1,
@@ -931,27 +945,37 @@ GET shopping/_search
   },
   "hits" : {
     "total" : {
-      "value" : 3,
+      "value" : 4,
       "relation" : "eq"
     },
     "max_score" : null,
     "hits" : [ ]
   },
   "aggregations" : {
-    "price_group" : {
+    "balance_avg" : {
+      "count" : 4,
+      "min" : 9812.0,
+      "max" : 45801.0,
+      "avg" : 25208.0,
+      "sum" : 100832.0
+    },
+    "age_avg" : {
+      "value" : 34.0
+    },
+    "age_agg" : {
       "doc_count_error_upper_bound" : 0,
       "sum_other_doc_count" : 0,
       "buckets" : [
         {
-          "key" : 3999.0,
+          "key" : 38,
+          "doc_count" : 2
+        },
+        {
+          "key" : 28,
           "doc_count" : 1
         },
         {
-          "key" : 4999.0,
-          "doc_count" : 1
-        },
-        {
-          "key" : 5999.0,
+          "key" : 32,
           "doc_count" : 1
         }
       ]
@@ -960,23 +984,36 @@ GET shopping/_search
 }
 ```
 
+按照年龄聚合，并且请求这些年龄段的这些人的平均薪资
+
 ```java
-GET shopping/_search
+GET bank/_search
 {
+  "query": {
+    "match_all": {}
+  },
+  "size": 0, 
   "aggs": {
-    "price_avg": {
-      "avg": {   // 聚合类型：平均值
-        "field": "price"
+    "age_agg": {
+      "terms": {
+        "field": "age",
+        "size": 5
+      },
+      "aggs": {
+        "balance_avg": {
+          "avg": {
+            "field": "balance"
+          }
+        }
       }
     }
-  },
-  "size": 0
+  }
 }
 ```
 
 ```java
 {
-  "took" : 6,
+  "took" : 5,
   "timed_out" : false,
   "_shards" : {
     "total" : 1,
@@ -986,18 +1023,207 @@ GET shopping/_search
   },
   "hits" : {
     "total" : {
-      "value" : 3,
+      "value" : 1000,
       "relation" : "eq"
     },
     "max_score" : null,
     "hits" : [ ]
   },
   "aggregations" : {
-    "price_avg" : {
-      "value" : 4999.0
+    "age_agg" : {
+      "doc_count_error_upper_bound" : 0,
+      "sum_other_doc_count" : 716,
+      "buckets" : [
+        {
+          "key" : 31,
+          "doc_count" : 61,
+          "balance_avg" : {
+            "value" : 28312.918032786885
+          }
+        },
+        {
+          "key" : 39,
+          "doc_count" : 60,
+          "balance_avg" : {
+            "value" : 25269.583333333332
+          }
+        },
+        {
+          "key" : 26,
+          "doc_count" : 59,
+          "balance_avg" : {
+            "value" : 23194.813559322032
+          }
+        },
+        {
+          "key" : 32,
+          "doc_count" : 52,
+          "balance_avg" : {
+            "value" : 23951.346153846152
+          }
+        },
+        {
+          "key" : 35,
+          "doc_count" : 52,
+          "balance_avg" : {
+            "value" : 22136.69230769231
+          }
+        }
+      ]
     }
   }
 }
+
+```
+
+查出所有年龄分布，并且这些年龄段中 M 的平均薪资和 F 的平均薪资以及这个年龄段的总体年龄薪资
+
+```java
+GET bank/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "size": 0, 
+  "aggs": {
+    "age_terms": {
+      "terms": {
+        "field": "age",
+        "size": 3
+      },
+      "aggs": {
+        "gender_terms": {
+          "terms": {
+            "field": "gender.keyword"
+          },
+          "aggs": {
+            "balance_avg": {
+              "avg": {
+                "field": "balance"
+              }
+            }
+          }
+        },
+        "balance_avg": {
+          "avg": {
+            "field": "balance"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+```java
+{
+  "took" : 14,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 1000,
+      "relation" : "eq"
+    },
+    "max_score" : null,
+    "hits" : [ ]
+  },
+  "aggregations" : {
+    "age_terms" : {
+      "doc_count_error_upper_bound" : 0,
+      "sum_other_doc_count" : 820,
+      "buckets" : [
+        {
+          "key" : 31,
+          "doc_count" : 61,
+          "gender_terms" : {
+            "doc_count_error_upper_bound" : 0,
+            "sum_other_doc_count" : 0,
+            "buckets" : [
+              {
+                "key" : "M",
+                "doc_count" : 35,
+                "balance_avg" : {
+                  "value" : 29565.628571428573
+                }
+              },
+              {
+                "key" : "F",
+                "doc_count" : 26,
+                "balance_avg" : {
+                  "value" : 26626.576923076922
+                }
+              }
+            ]
+          },
+          "balance_avg" : {
+            "value" : 28312.918032786885
+          }
+        },
+        {
+          "key" : 39,
+          "doc_count" : 60,
+          "gender_terms" : {
+            "doc_count_error_upper_bound" : 0,
+            "sum_other_doc_count" : 0,
+            "buckets" : [
+              {
+                "key" : "F",
+                "doc_count" : 38,
+                "balance_avg" : {
+                  "value" : 26348.684210526317
+                }
+              },
+              {
+                "key" : "M",
+                "doc_count" : 22,
+                "balance_avg" : {
+                  "value" : 23405.68181818182
+                }
+              }
+            ]
+          },
+          "balance_avg" : {
+            "value" : 25269.583333333332
+          }
+        },
+        {
+          "key" : 26,
+          "doc_count" : 59,
+          "gender_terms" : {
+            "doc_count_error_upper_bound" : 0,
+            "sum_other_doc_count" : 0,
+            "buckets" : [
+              {
+                "key" : "M",
+                "doc_count" : 32,
+                "balance_avg" : {
+                  "value" : 25094.78125
+                }
+              },
+              {
+                "key" : "F",
+                "doc_count" : 27,
+                "balance_avg" : {
+                  "value" : 20943.0
+                }
+              }
+            ]
+          },
+          "balance_avg" : {
+            "value" : 23194.813559322032
+          }
+        }
+      ]
+    }
+  }
+}
+
 ```
 
 ## 映射关系
@@ -1120,7 +1346,7 @@ GET user/_search
 {
   "took" : 2,
   "timed_out" : false,
-  "_shards" : {
+  "_shards" : {m
     "total" : 1,
     "successful" : 1,
     "skipped" : 0,
