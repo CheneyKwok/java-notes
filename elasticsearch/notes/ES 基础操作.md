@@ -312,79 +312,32 @@ DELETE shopping/_doc/2   // 根据 ID 删除
 }
 ```
 
-## 条件查询
+## 条件查询 (query)
 
 ```java
-GET shopping/_search
+准备测试数据
+https://github.com/elastic/elasticsearch/blob/7.6/docs/src/test/resources/accounts.json
+
+PUT /bank/_bulk
+{"index":{"_id":"1"}}
+{"account_number":1,"balance":39225,"firstname":"Amber","lastname":"Duke","age":32,"gender":"M","address":"880 Holmes Lane","employer":"Pyrami","email":"amberduke@pyrami.com","city":"Brogan","state":"IL"}
+{"index":{"_id":"6"}}
+{"account_number":6,"balance":5686,"firstname":"Hattie","lastname":"Bond","age":36,"gender":"M","address":"671 Bristol Street","employer":"Netagy","email":"hattiebond@netagy.com","city":"Dante","state":"TN"}
+...
+```
+
+### match 全文检索
+
+match 全文检索会将 Mill lane 进行分词，查出 address 中包含 Mill lane 的所有记录，并给出相关性得分
+
+```java
+GET bank/_search
 {
   "query": {
     "match": {
-      "category": "小米"
+      "address": "Mill lane"
     }
   }
-}
-```
-
-```java
-{
-  "took" : 13,
-  "timed_out" : false,
-  "_shards" : {
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 2,
-      "relation" : "eq"
-    },
-    "max_score" : 0.7133499,
-    "hits" : [
-      {
-        "_index" : "shopping",
-        "_type" : "_doc",
-        "_id" : "1",
-        "_score" : 0.7133499,
-        "_source" : {
-          "title" : "小米手机",
-          "category" : "小米",
-          "images" : "https://image.baidu.com/search/xm.jpg",
-          "price" : 5999.0
-        }
-      }
-    ]
-  }
-}
-```
-
-### 分页
-
-```java
-GET shopping/_search
-{
-  "query": {
-    "match_all": {}
-  },
-  "from": 0,
-  "size": 2
-}
-```
-
-from：（页码-1）* size
-
-### 指定字段
-
-```java
-GET shopping/_search
-{
-  "query": {
-    "match_all": {}
-  },
-  "from": 0,
-  "size": 2,
-  "_source": ["title"]
 }
 ```
 
@@ -400,49 +353,85 @@ GET shopping/_search
   },
   "hits" : {
     "total" : {
-      "value" : 2,
+      "value" : 19,
       "relation" : "eq"
     },
-    "max_score" : 1.0,
+    "max_score" : 9.507477,
     "hits" : [
       {
-        "_index" : "shopping",
+        "_index" : "bank",
         "_type" : "_doc",
-        "_id" : "1",
-        "_score" : 1.0,
+        "_id" : "136",
+        "_score" : 9.507477,
         "_source" : {
-          "title" : "小米手机"
+          "account_number" : 136,
+          "balance" : 45801,
+          "firstname" : "Winnie",
+          "lastname" : "Holland",
+          "age" : 38,
+          "gender" : "M",
+          "address" : "198 Mill Lane",
+          "employer" : "Neteria",
+          "email" : "winnieholland@neteria.com",
+          "city" : "Urie",
+          "state" : "IL"
+        }
+      },
+      {
+        "_index" : "bank",
+        "_type" : "_doc",
+        "_id" : "970",
+        "_score" : 5.4032025,
+        "_source" : {
+          "account_number" : 970,
+          "balance" : 19648,
+          "firstname" : "Forbes",
+          "lastname" : "Wallace",
+          "age" : 28,
+          "gender" : "M",
+          "address" : "990 Mill Road",
+          "employer" : "Pheast",
+          "email" : "forbeswallace@pheast.com",
+          "city" : "Lopezo",
+          "state" : "AK"
         }
       }
+      ......
     ]
   }
 }
+
 ```
 
-### 排序
+### match_all 查询所有
 
 ```java
-GET shopping/_search
+GET bank/_search
 {
   "query": {
     "match_all": {}
   },
-  "from": 0,
-  "size": 2,
-  "_source": ["title","price"],
-  "sort": [
+  "sort": [  // 排序
     {
-      "price": {
-        "order": "desc" // 降序
+      "balance": {
+        "order": "desc"
+      }
+    },
+    {
+      "age": {
+        "order": "asc"
       }
     }
-  ]
+  ],
+  "from": 0,  // 分页 （页码-1）* size
+  "size": 3,
+  "_source": ["firstname", "balance", "age"] // 指定返回字段
 }
 ```
 
 ```java
 {
-  "took" : 2,
+  "took" : 6,
   "timed_out" : false,
   "_shards" : {
     "total" : 1,
@@ -452,35 +441,54 @@ GET shopping/_search
   },
   "hits" : {
     "total" : {
-      "value" : 3,
+      "value" : 1000,
       "relation" : "eq"
     },
     "max_score" : null,
     "hits" : [
       {
-        "_index" : "shopping",
+        "_index" : "bank",
         "_type" : "_doc",
-        "_id" : "1",
+        "_id" : "248",
         "_score" : null,
         "_source" : {
-          "price" : 5999.0,
-          "title" : "小米手机"
+          "firstname" : "West",
+          "balance" : 49989,
+          "age" : 36
         },
         "sort" : [
-          5999.0
+          49989,
+          36
         ]
       },
       {
-        "_index" : "shopping",
+        "_index" : "bank",
         "_type" : "_doc",
-        "_id" : "2",
+        "_id" : "854",
         "_score" : null,
         "_source" : {
-          "price" : 4999.0,
-          "title" : "华为手机"
+          "firstname" : "Jimenez",
+          "balance" : 49795,
+          "age" : 25
         },
         "sort" : [
-          4999.0
+          49795,
+          25
+        ]
+      },
+      {
+        "_index" : "bank",
+        "_type" : "_doc",
+        "_id" : "240",
+        "_score" : null,
+        "_source" : {
+          "firstname" : "Oconnor",
+          "balance" : 49741,
+          "age" : 35
+        },
+        "sort" : [
+          49741,
+          35
         ]
       }
     ]
@@ -489,153 +497,322 @@ GET shopping/_search
 
 ```
 
-### 多条件查询
+### match_phrase 短语匹配
 
-查询 category 和 price 字段同时满足的条件
+match_phrase 将整个条件当成一个短语匹配，不会进行分词，返回 address 字段中包含此短语的所有结果
 
 ```java
-GET shopping/_search
+GET bank/_search
+{
+  "query": {
+    "match_phrase": {
+      "address": "Mill lane"
+    }
+  }
+}
+```
+
+```java
+{
+  "took" : 5,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 1,
+      "relation" : "eq"
+    },
+    "max_score" : 9.507477,
+    "hits" : [
+      {
+        "_index" : "bank",
+        "_type" : "_doc",
+        "_id" : "136",
+        "_score" : 9.507477,
+        "_source" : {
+          "account_number" : 136,
+          "balance" : 45801,
+          "firstname" : "Winnie",
+          "lastname" : "Holland",
+          "age" : 38,
+          "gender" : "M",
+          "address" : "198 Mill Lane",
+          "employer" : "Neteria",
+          "email" : "winnieholland@neteria.com",
+          "city" : "Urie",
+          "state" : "IL"
+        }
+      }
+    ]
+  }
+}
+
+```
+
+### multi_match 多字段匹配
+
+multi_match 会尽可能的多地段匹配，同样也会分词
+
+```java
+GET bank/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "mill Lopezo",
+      "fields": ["address", "city"]
+    }
+  }
+}
+```
+
+```java
+{
+  "took" : 6,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 4,
+      "relation" : "eq"
+    },
+    "max_score" : 6.5059485,
+    "hits" : [
+      {
+        "_index" : "bank",
+        "_type" : "_doc",
+        "_id" : "970",
+        "_score" : 6.5059485,
+        "_source" : {
+          "account_number" : 970,
+          "balance" : 19648,
+          "firstname" : "Forbes",
+          "lastname" : "Wallace",
+          "age" : 28,
+          "gender" : "M",
+          "address" : "990 Mill Road",
+          "employer" : "Pheast",
+          "email" : "forbeswallace@pheast.com",
+          "city" : "Lopezo",
+          "state" : "AK"
+        }
+      },
+      {
+        "_index" : "bank",
+        "_type" : "_doc",
+        "_id" : "136",
+        "_score" : 5.4032025,
+        "_source" : {
+          "account_number" : 136,
+          "balance" : 45801,
+          "firstname" : "Winnie",
+          "lastname" : "Holland",
+          "age" : 38,
+          "gender" : "M",
+          "address" : "198 Mill Lane",
+          "employer" : "Neteria",
+          "email" : "winnieholland@neteria.com",
+          "city" : "Urie",
+          "state" : "IL"
+        }
+      },
+      {
+        "_index" : "bank",
+        "_type" : "_doc",
+        "_id" : "345",
+        "_score" : 5.4032025,
+        "_source" : {
+          "account_number" : 345,
+          "balance" : 9812,
+          "firstname" : "Parker",
+          "lastname" : "Hines",
+          "age" : 38,
+          "gender" : "M",
+          "address" : "715 Mill Avenue",
+          "employer" : "Baluba",
+          "email" : "parkerhines@baluba.com",
+          "city" : "Blackgum",
+          "state" : "KY"
+        }
+      },
+      {
+        "_index" : "bank",
+        "_type" : "_doc",
+        "_id" : "472",
+        "_score" : 5.4032025,
+        "_source" : {
+          "account_number" : 472,
+          "balance" : 25571,
+          "firstname" : "Lee",
+          "lastname" : "Long",
+          "age" : 32,
+          "gender" : "F",
+          "address" : "288 Mill Street",
+          "employer" : "Comverges",
+          "email" : "leelong@comverges.com",
+          "city" : "Movico",
+          "state" : "MT"
+        }
+      }
+    ]
+  }
+}
+
+```
+
+### term 精确匹配
+
+非 text 字段使用 term
+
+```java
+GET bank/_search
+{
+  "query": {
+    "term": {
+      "account_number": {
+        "value": "1"
+      }
+    }
+  }
+}
+```
+
+```java
+{
+  "took" : 3,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 1,
+      "relation" : "eq"
+    },
+    "max_score" : 1.0,
+    "hits" : [
+      {
+        "_index" : "bank",
+        "_type" : "_doc",
+        "_id" : "1",
+        "_score" : 1.0,
+        "_source" : {
+          "account_number" : 1,
+          "balance" : 39225,
+          "firstname" : "Amber",
+          "lastname" : "Duke",
+          "age" : 32,
+          "gender" : "M",
+          "address" : "880 Holmes Lane",
+          "employer" : "Pyrami",
+          "email" : "amberduke@pyrami.com",
+          "city" : "Brogan",
+          "state" : "IL"
+        }
+      }
+    ]
+  }
+}
+```
+
+match 中的 text字段 使用 FIELD.keyword 与 term 的效果一致，会精确匹配
+
+```java
+GET bank/_search
+{
+  "query": {
+    "match": {
+      "address.keyword": "789 Madison"
+    }
+  }
+}
+```
+
+```java
+{
+  "took" : 1,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 0,
+      "relation" : "eq"
+    },
+    "max_score" : null,
+    "hits" : [ ]
+  }
+}
+```
+
+## 复合查询
+
+`bool`: 布尔查询有一个或者多个布尔子句组成
+
+- `must`: 文档必须符合must中所有的条件，会影响相关性得分
+- `must_not`: 文档必须不符合must_not 中的所有条件
+- `should`: 文档可以符合should中的条件，会影响相关性得分
+- `filter`: 只过滤符合条件的文档，不影响相关性得分
+
+```java
+GET bank/_search
 {
   "query": {
     "bool": {
       "must": [
         {
           "match": {
-            "category": "小米"
+            "gender": "M"
           }
         },
         {
           "match": {
-            "price": "5999.00"
+            "address": "lane"
           }
         }
-      ]
-    }
-  }
-}
-```
-
-```java
-{
-  "took" : 2,
-  "timed_out" : false,
-  "_shards" : {
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 1,
-      "relation" : "eq"
-    },
-    "max_score" : 1.9400072,
-    "hits" : [
-      {
-        "_index" : "shopping",
-        "_type" : "_doc",
-        "_id" : "1",
-        "_score" : 1.9400072,
-        "_source" : {
-          "title" : "小米手机",
-          "category" : "小米",
-          "images" : "https://image.baidu.com/search/xm.jpg",
-          "price" : 5999.0
+      ],
+      "must_not": [
+        {
+          "range": {
+            "age": {
+              "gte": 10,
+              "lte": 20
+            }
+          }
         }
-      }
-    ]
-  }
-}
-```
-
-查询 category 任意满足的条件
-
-```java
-GET shopping/_search
-{
-  "query": {
-    "bool": {
+      ],
       "should": [
         {
           "match": {
-            "category": "小米"
-          }
-        },
-        {
-          "match": {
-            "category": "华为"
+            "firstname": "Tammi"
           }
         }
-      ]
-    }
-  }
-}
-```
-
-```java
-{
-  "took" : 1,
-  "timed_out" : false,
-  "_shards" : {
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 3,
-      "relation" : "eq"
-    },
-    "max_score" : 1.9616582,
-    "hits" : [
-      {
-        "_index" : "shopping",
-        "_type" : "_doc",
-        "_id" : "2",
-        "_score" : 1.9616582,
-        "_source" : {
-          "title" : "华为手机",
-          "category" : "华为",
-          "images" : "https://image.baidu.com/search/hw.jpg",
-          "price" : 4999.0
-        }
-      },
-      {
-        "_index" : "shopping",
-        "_type" : "_doc",
-        "_id" : "1",
-        "_score" : 0.9400072,
-        "_source" : {
-          "title" : "小米手机",
-          "category" : "小米",
-          "images" : "https://image.baidu.com/search/xm.jpg",
-          "price" : 5999.0
-        }
-      }
-    ]
-  }
-}
-
-```
-
-### 范围查询
-
-查询 price 字段指定范围的条件
-
-```java
-GET shopping/_search
-{
-  "query": {
-    "bool": {
+      ],
       "filter": [
-        {"range": {
-          "price": {
-            "gte": 4000,
-            "lte": 6000
+        {
+          "range": {
+            "account_number": {
+              "gte": 900,
+              "lte": 1000
+            }
           }
-        }}
+        }
       ]
     }
   }
@@ -644,71 +821,7 @@ GET shopping/_search
 
 ```java
 {
-  "took" : 1,
-  "timed_out" : false,
-  "_shards" : {
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 2,
-      "relation" : "eq"
-    },
-    "max_score" : 0.0,
-    "hits" : [
-      {
-        "_index" : "shopping",
-        "_type" : "_doc",
-        "_id" : "1",
-        "_score" : 0.0,
-        "_source" : {
-          "title" : "小米手机",
-          "category" : "小米",
-          "images" : "https://image.baidu.com/search/xm.jpg",
-          "price" : 5999.0
-        }
-      },
-      {
-        "_index" : "shopping",
-        "_type" : "_doc",
-        "_id" : "2",
-        "_score" : 0.0,
-        "_source" : {
-          "title" : "华为手机",
-          "category" : "华为",
-          "images" : "https://image.baidu.com/search/hw.jpg",
-          "price" : 4999.0
-        }
-      }
-    ]
-  }
-}
-
-```
-
-### 完全匹配
-
-ES 会将每个词拆分开，放入倒排索引中
-
-而 match 会将条件拆开，每个词进行全文检索，所以会匹配所有满足的条件，如果要完全匹配则需使用 match_phrase
-
-```java
-GET shopping/_search
-{
-  "query": {
-    "match": {
-      "category": "小华"
-    }
-  }
-}
-```
-
-```java
-{
-  "took" : 1,
+  "took" : 4,
   "timed_out" : false,
   "_shards" : {
     "total" : 1,
@@ -721,139 +834,98 @@ GET shopping/_search
       "value" : 3,
       "relation" : "eq"
     },
-    "max_score" : 0.9808291,
+    "max_score" : 4.783532,
     "hits" : [
       {
-        "_index" : "shopping",
+        "_index" : "bank",
         "_type" : "_doc",
-        "_id" : "2",
-        "_score" : 0.9808291,
+        "_id" : "908",
+        "_score" : 4.783532,
         "_source" : {
-          "title" : "华为手机",
-          "category" : "华为",
-          "images" : "https://image.baidu.com/search/hw.jpg",
-          "price" : 4999.0
+          "account_number" : 908,
+          "balance" : 45975,
+          "firstname" : "Mosley",
+          "lastname" : "Holloway",
+          "age" : 31,
+          "gender" : "M",
+          "address" : "929 Eldert Lane",
+          "employer" : "Anivet",
+          "email" : "mosleyholloway@anivet.com",
+          "city" : "Biehle",
+          "state" : "MS"
         }
       },
       {
-        "_index" : "shopping",
+        "_index" : "bank",
         "_type" : "_doc",
-        "_id" : "1",
-        "_score" : 0.4700036,
+        "_id" : "934",
+        "_score" : 4.783532,
         "_source" : {
-          "title" : "小米手机",
-          "category" : "小米",
-          "images" : "https://image.baidu.com/search/xm.jpg",
-          "price" : 5999.0
+          "account_number" : 934,
+          "balance" : 43987,
+          "firstname" : "Freida",
+          "lastname" : "Daniels",
+          "age" : 34,
+          "gender" : "M",
+          "address" : "448 Cove Lane",
+          "employer" : "Vurbo",
+          "email" : "freidadaniels@vurbo.com",
+          "city" : "Snelling",
+          "state" : "NJ"
         }
-      }
-    ]
-  }
-}
-
-```
-
-```java
-GET shopping/_search
-{
-  "query": {
-    "match_phrase": {
-      "category": "小华"
-    }
-  }
-}
-```
-
-```java
-{
-  "took" : 6,
-  "timed_out" : false,
-  "_shards" : {
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 0,
-      "relation" : "eq"
-    },
-    "max_score" : null,
-    "hits" : [ ]
-  }
-}
-
-```
-
-### 高亮
-
-```java
-GET shopping/_search
-{
-  "query": {
-    "match_phrase": {
-      "category": "小米"
-    }
-  },
-  "highlight": {
-    "fields": {
-      "category": {}
-    }
-  }
-}
-
-```
-
-```java
-{
-  "took" : 142,
-  "timed_out" : false,
-  "_shards" : {
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 2,
-      "relation" : "eq"
-    },
-    "max_score" : 0.9400072,
-    "hits" : [
+      },
       {
-        "_index" : "shopping",
+        "_index" : "bank",
         "_type" : "_doc",
-        "_id" : "1",
-        "_score" : 0.9400072,
+        "_id" : "921",
+        "_score" : 4.783532,
         "_source" : {
-          "title" : "小米手机",
-          "category" : "小米",
-          "images" : "https://image.baidu.com/search/xm.jpg",
-          "price" : 5999.0
-        },
-        "highlight" : {
-          "category" : [
-            "<em>小</em><em>米</em>"
-          ]
+          "account_number" : 921,
+          "balance" : 49119,
+          "firstname" : "Barbara",
+          "lastname" : "Wade",
+          "age" : 29,
+          "gender" : "M",
+          "address" : "687 Hoyts Lane",
+          "employer" : "Roughies",
+          "email" : "barbarawade@roughies.com",
+          "city" : "Sattley",
+          "state" : "CO"
         }
       }
     ]
   }
 }
+
 
 ```
 
 ## 聚合查询
 
+搜索 address 中包含 mill 的所有人的年龄分布和平均年龄
+
 ```java
-GET shopping/_search
+GET bank/_search
 {
-  "aggs": { // 操作类型：聚合
-    "price_group": {  // 名称
-      "terms": {      // 聚合类型：分组
-        "field": "price"  // 字段
+  "query": {
+    "match_phrase": {
+      "address": "mill"
+    }
+  },
+  "aggs": {
+    "age_agg": {
+      "terms": {  // terms 多值聚合，按照字段的值来动态构建桶
+        "field": "age"
+      }
+    },
+    "age_avg": {
+      "avg": {
+        "field": "age"
+      }
+    },
+    "balance_stats": {
+      "stats": {
+        "field": "balance"
       }
     }
   },
@@ -863,7 +935,7 @@ GET shopping/_search
 
 ```java
 {
-  "took" : 2,
+  "took" : 14,
   "timed_out" : false,
   "_shards" : {
     "total" : 1,
@@ -873,27 +945,37 @@ GET shopping/_search
   },
   "hits" : {
     "total" : {
-      "value" : 3,
+      "value" : 4,
       "relation" : "eq"
     },
     "max_score" : null,
     "hits" : [ ]
   },
   "aggregations" : {
-    "price_group" : {
+    "balance_avg" : {
+      "count" : 4,
+      "min" : 9812.0,
+      "max" : 45801.0,
+      "avg" : 25208.0,
+      "sum" : 100832.0
+    },
+    "age_avg" : {
+      "value" : 34.0
+    },
+    "age_agg" : {
       "doc_count_error_upper_bound" : 0,
       "sum_other_doc_count" : 0,
       "buckets" : [
         {
-          "key" : 3999.0,
+          "key" : 38,
+          "doc_count" : 2
+        },
+        {
+          "key" : 28,
           "doc_count" : 1
         },
         {
-          "key" : 4999.0,
-          "doc_count" : 1
-        },
-        {
-          "key" : 5999.0,
+          "key" : 32,
           "doc_count" : 1
         }
       ]
@@ -902,23 +984,36 @@ GET shopping/_search
 }
 ```
 
+按照年龄聚合，并且请求这些年龄段的这些人的平均薪资
+
 ```java
-GET shopping/_search
+GET bank/_search
 {
+  "query": {
+    "match_all": {}
+  },
+  "size": 0, 
   "aggs": {
-    "price_avg": {
-      "avg": {   // 聚合类型：平均值
-        "field": "price"
+    "age_agg": {
+      "terms": {
+        "field": "age",
+        "size": 5
+      },
+      "aggs": {
+        "balance_avg": {
+          "avg": {
+            "field": "balance"
+          }
+        }
       }
     }
-  },
-  "size": 0
+  }
 }
 ```
 
 ```java
 {
-  "took" : 6,
+  "took" : 5,
   "timed_out" : false,
   "_shards" : {
     "total" : 1,
@@ -928,60 +1023,91 @@ GET shopping/_search
   },
   "hits" : {
     "total" : {
-      "value" : 3,
+      "value" : 1000,
       "relation" : "eq"
     },
     "max_score" : null,
     "hits" : [ ]
   },
   "aggregations" : {
-    "price_avg" : {
-      "value" : 4999.0
+    "age_agg" : {
+      "doc_count_error_upper_bound" : 0,
+      "sum_other_doc_count" : 716,
+      "buckets" : [
+        {
+          "key" : 31,
+          "doc_count" : 61,
+          "balance_avg" : {
+            "value" : 28312.918032786885
+          }
+        },
+        {
+          "key" : 39,
+          "doc_count" : 60,
+          "balance_avg" : {
+            "value" : 25269.583333333332
+          }
+        },
+        {
+          "key" : 26,
+          "doc_count" : 59,
+          "balance_avg" : {
+            "value" : 23194.813559322032
+          }
+        },
+        {
+          "key" : 32,
+          "doc_count" : 52,
+          "balance_avg" : {
+            "value" : 23951.346153846152
+          }
+        },
+        {
+          "key" : 35,
+          "doc_count" : 52,
+          "balance_avg" : {
+            "value" : 22136.69230769231
+          }
+        }
+      ]
     }
   }
 }
+
 ```
 
-## 映射关系
+查出所有年龄分布，并且这些年龄段中 M 的平均薪资和 F 的平均薪资以及这个年龄段的总体年龄薪资
 
 ```java
-PUT user
-
-PUT user/_mapping
+GET bank/_search
 {
-  "properties": {
-    "name": {
-      "type": "text",
-      "index": true
-    },
-    "sex": {
-      "type": "keyword",
-      "index": true
-    },
-    "tel": {
-      "type": "keyword",
-      "index": false
-    }
-  }
-}
-
-GET user/_mapping
-```
-
-```java
-{
-  "user" : {
-    "mappings" : {
-      "properties" : {
-        "name" : {
-          "type" : "text"
+  "query": {
+    "match_all": {}
+  },
+  "size": 0, 
+  "aggs": {
+    "age_terms": {
+      "terms": {
+        "field": "age",
+        "size": 3
+      },
+      "aggs": {
+        "gender_terms": {
+          "terms": {
+            "field": "gender.keyword"
+          },
+          "aggs": {
+            "balance_avg": {
+              "avg": {
+                "field": "balance"
+              }
+            }
+          }
         },
-        "sex" : {
-          "type" : "keyword" // 关键字不会被分开
-        },
-        "tel" : {
-          "type" : "keyword",
-          "index" : false  // index 为 false 则不能被查询
+        "balance_avg": {
+          "avg": {
+            "field": "balance"
+          }
         }
       }
     }
@@ -990,31 +1116,8 @@ GET user/_mapping
 ```
 
 ```java
-// 准备测试数据
-PUT user/_doc/1
 {
-  "name": "张三",
-  "sex": "男的",
-  "tel": 111111111111
-}
-```
-
-查询 type 为 text，index 为 true 的 name 字段
-
-```java
-GET user/_search
-{
-  "query": {
-    "match": {
-      "name": "三"
-    }
-  }
-}
-```
-
-```java
-{
-  "took" : 266,
+  "took" : 14,
   "timed_out" : false,
   "_shards" : {
     "total" : 1,
@@ -1024,107 +1127,202 @@ GET user/_search
   },
   "hits" : {
     "total" : {
-      "value" : 1,
-      "relation" : "eq"
-    },
-    "max_score" : 0.2876821,
-    "hits" : [
-      {
-        "_index" : "user",
-        "_type" : "_doc",
-        "_id" : "1",
-        "_score" : 0.2876821,
-        "_source" : {
-          "name" : "张三",
-          "sex" : "男的",
-          "tel" : 111111111111
-        }
-      }
-    ]
-  }
-}
-```
-
-查询 type 为 keyword，index 为 true 的 sex 字段
-
-```java
-GET user/_search
-{
-  "query": {
-    "match": {
-      "sex": "男"
-    }
-  }
-}
-```
-
-```java
-{
-  "took" : 2,
-  "timed_out" : false,
-  "_shards" : {
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 0,
+      "value" : 1000,
       "relation" : "eq"
     },
     "max_score" : null,
     "hits" : [ ]
-  }
-}
-```
-
-查询 type 为 keyword，index 为 false 的 tel 字段
-
-```java
-GET user/_search
-{
-  "query": {
-    "match": {
-      "tel": 111111111111
+  },
+  "aggregations" : {
+    "age_terms" : {
+      "doc_count_error_upper_bound" : 0,
+      "sum_other_doc_count" : 820,
+      "buckets" : [
+        {
+          "key" : 31,
+          "doc_count" : 61,
+          "gender_terms" : {
+            "doc_count_error_upper_bound" : 0,
+            "sum_other_doc_count" : 0,
+            "buckets" : [
+              {
+                "key" : "M",
+                "doc_count" : 35,
+                "balance_avg" : {
+                  "value" : 29565.628571428573
+                }
+              },
+              {
+                "key" : "F",
+                "doc_count" : 26,
+                "balance_avg" : {
+                  "value" : 26626.576923076922
+                }
+              }
+            ]
+          },
+          "balance_avg" : {
+            "value" : 28312.918032786885
+          }
+        },
+        {
+          "key" : 39,
+          "doc_count" : 60,
+          "gender_terms" : {
+            "doc_count_error_upper_bound" : 0,
+            "sum_other_doc_count" : 0,
+            "buckets" : [
+              {
+                "key" : "F",
+                "doc_count" : 38,
+                "balance_avg" : {
+                  "value" : 26348.684210526317
+                }
+              },
+              {
+                "key" : "M",
+                "doc_count" : 22,
+                "balance_avg" : {
+                  "value" : 23405.68181818182
+                }
+              }
+            ]
+          },
+          "balance_avg" : {
+            "value" : 25269.583333333332
+          }
+        },
+        {
+          "key" : 26,
+          "doc_count" : 59,
+          "gender_terms" : {
+            "doc_count_error_upper_bound" : 0,
+            "sum_other_doc_count" : 0,
+            "buckets" : [
+              {
+                "key" : "M",
+                "doc_count" : 32,
+                "balance_avg" : {
+                  "value" : 25094.78125
+                }
+              },
+              {
+                "key" : "F",
+                "doc_count" : 27,
+                "balance_avg" : {
+                  "value" : 20943.0
+                }
+              }
+            ]
+          },
+          "balance_avg" : {
+            "value" : 23194.813559322032
+          }
+        }
+      ]
     }
   }
 }
+
 ```
 
+## 映射关系
+
+### 创建映射关系
+
 ```java
+PUT newbank/_mapping
 {
-  "error" : {
-    "root_cause" : [
-      {
-        "type" : "query_shard_exception",
-        "reason" : "failed to create query: {\n  \"match\" : {\n    \"tel\" : {\n      \"query\" : 111111111111,\n      \"operator\" : \"OR\",\n      \"prefix_length\" : 0,\n      \"max_expansions\" : 50,\n      \"fuzzy_transpositions\" : true,\n      \"lenient\" : false,\n      \"zero_terms_query\" : \"NONE\",\n      \"auto_generate_synonyms_phrase_query\" : true,\n      \"boost\" : 1.0\n    }\n  }\n}",
-        "index_uuid" : "b8-jTULoQ6GM6NGeLXzosQ",
-        "index" : "user"
-      }
-    ],
-    "type" : "search_phase_execution_exception",
-    "reason" : "all shards failed",
-    "phase" : "query",
-    "grouped" : true,
-    "failed_shards" : [
-      {
-        "shard" : 0,
-        "index" : "user",
-        "node" : "fYVP1puzSCeL_0eMRRcO3Q",
-        "reason" : {
-          "type" : "query_shard_exception",
-          "reason" : "failed to create query: {\n  \"match\" : {\n    \"tel\" : {\n      \"query\" : 111111111111,\n      \"operator\" : \"OR\",\n      \"prefix_length\" : 0,\n      \"max_expansions\" : 50,\n      \"fuzzy_transpositions\" : true,\n      \"lenient\" : false,\n      \"zero_terms_query\" : \"NONE\",\n      \"auto_generate_synonyms_phrase_query\" : true,\n      \"boost\" : 1.0\n    }\n  }\n}",
-          "index_uuid" : "b8-jTULoQ6GM6NGeLXzosQ",
-          "index" : "user",
-          "caused_by" : {
-            "type" : "illegal_argument_exception",
-            "reason" : "Cannot search on field [tel] since it is not indexed."
+  "properties" : {
+        "account_number" : {
+          "type" : "long"
+        },
+        "address" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "age" : {
+          "type" : "integer"
+        },
+        "balance" : {
+          "type" : "long"
+        },
+        "city" : {
+          "type" : "keyword"
+        },
+        "email" : {
+          "type" : "keyword"
+        },
+        "employer" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "firstname" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "gender" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "lastname" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "state" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
           }
         }
       }
-    ]
+}
+```
+
+### 获取映射关系
+
+```java
+GET newbank/_mapping
+```
+
+### 更新映射，数据迁移
+
+```java
+POST _reindex
+{
+  "source": {
+    "index": "bank"
   },
-  "status" : 400
+  "dest": {
+    "index": "newbank"
+  }
 }
 ```
