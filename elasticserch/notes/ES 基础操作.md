@@ -1228,187 +1228,101 @@ GET bank/_search
 
 ## 映射关系
 
-```java
-PUT user
-
-PUT user/_mapping
-{
-  "properties": {
-    "name": {
-      "type": "text",
-      "index": true
-    },
-    "sex": {
-      "type": "keyword",
-      "index": true
-    },
-    "tel": {
-      "type": "keyword",
-      "index": false
-    }
-  }
-}
-
-GET user/_mapping
-```
+### 创建映射关系
 
 ```java
+PUT newbank/_mapping
 {
-  "user" : {
-    "mappings" : {
-      "properties" : {
-        "name" : {
-          "type" : "text"
+  "properties" : {
+        "account_number" : {
+          "type" : "long"
         },
-        "sex" : {
-          "type" : "keyword" // 关键字不会被分开
+        "address" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
         },
-        "tel" : {
-          "type" : "keyword",
-          "index" : false  // index 为 false 则不能被查询
-        }
-      }
-    }
-  }
-}
-```
-
-```java
-// 准备测试数据
-PUT user/_doc/1
-{
-  "name": "张三",
-  "sex": "男的",
-  "tel": 111111111111
-}
-```
-
-查询 type 为 text，index 为 true 的 name 字段
-
-```java
-GET user/_search
-{
-  "query": {
-    "match": {
-      "name": "三"
-    }
-  }
-}
-```
-
-```java
-{
-  "took" : 266,
-  "timed_out" : false,
-  "_shards" : {
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 1,
-      "relation" : "eq"
-    },
-    "max_score" : 0.2876821,
-    "hits" : [
-      {
-        "_index" : "user",
-        "_type" : "_doc",
-        "_id" : "1",
-        "_score" : 0.2876821,
-        "_source" : {
-          "name" : "张三",
-          "sex" : "男的",
-          "tel" : 111111111111
-        }
-      }
-    ]
-  }
-}
-```
-
-查询 type 为 keyword，index 为 true 的 sex 字段
-
-```java
-GET user/_search
-{
-  "query": {
-    "match": {
-      "sex": "男"
-    }
-  }
-}
-```
-
-```java
-{
-  "took" : 2,
-  "timed_out" : false,
-  "_shards" : {m
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 0,
-      "relation" : "eq"
-    },
-    "max_score" : null,
-    "hits" : [ ]
-  }
-}
-```
-
-查询 type 为 keyword，index 为 false 的 tel 字段
-
-```java
-GET user/_search
-{
-  "query": {
-    "match": {
-      "tel": 111111111111
-    }
-  }
-}
-```
-
-```java
-{
-  "error" : {
-    "root_cause" : [
-      {
-        "type" : "query_shard_exception",
-        "reason" : "failed to create query: {\n  \"match\" : {\n    \"tel\" : {\n      \"query\" : 111111111111,\n      \"operator\" : \"OR\",\n      \"prefix_length\" : 0,\n      \"max_expansions\" : 50,\n      \"fuzzy_transpositions\" : true,\n      \"lenient\" : false,\n      \"zero_terms_query\" : \"NONE\",\n      \"auto_generate_synonyms_phrase_query\" : true,\n      \"boost\" : 1.0\n    }\n  }\n}",
-        "index_uuid" : "b8-jTULoQ6GM6NGeLXzosQ",
-        "index" : "user"
-      }
-    ],
-    "type" : "search_phase_execution_exception",
-    "reason" : "all shards failed",
-    "phase" : "query",
-    "grouped" : true,
-    "failed_shards" : [
-      {
-        "shard" : 0,
-        "index" : "user",
-        "node" : "fYVP1puzSCeL_0eMRRcO3Q",
-        "reason" : {
-          "type" : "query_shard_exception",
-          "reason" : "failed to create query: {\n  \"match\" : {\n    \"tel\" : {\n      \"query\" : 111111111111,\n      \"operator\" : \"OR\",\n      \"prefix_length\" : 0,\n      \"max_expansions\" : 50,\n      \"fuzzy_transpositions\" : true,\n      \"lenient\" : false,\n      \"zero_terms_query\" : \"NONE\",\n      \"auto_generate_synonyms_phrase_query\" : true,\n      \"boost\" : 1.0\n    }\n  }\n}",
-          "index_uuid" : "b8-jTULoQ6GM6NGeLXzosQ",
-          "index" : "user",
-          "caused_by" : {
-            "type" : "illegal_argument_exception",
-            "reason" : "Cannot search on field [tel] since it is not indexed."
+        "age" : {
+          "type" : "integer"
+        },
+        "balance" : {
+          "type" : "long"
+        },
+        "city" : {
+          "type" : "keyword"
+        },
+        "email" : {
+          "type" : "keyword"
+        },
+        "employer" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "firstname" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "gender" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "lastname" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "state" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
           }
         }
       }
-    ]
+}
+```
+
+### 获取映射关系
+
+```java
+GET newbank/_mapping
+```
+
+### 更新映射，数据迁移
+
+```java
+POST _reindex
+{
+  "source": {
+    "index": "bank"
   },
-  "status" : 400
+  "dest": {
+    "index": "newbank"
+  }
 }
 ```
