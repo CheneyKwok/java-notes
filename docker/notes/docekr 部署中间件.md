@@ -42,3 +42,41 @@ docker run --name kibana -p 5601:5601 \
 -e "elasticsearch.hosts=http://192.168.56.10:9200" \
 -d kibana:7.6.2
 ```
+
+## Nacos
+
+- 首先以不挂载的方式启动一个 nacos 容器，目的是拷贝挂载文件
+
+```java
+docker run --name nacos \
+-e MODE=standalone \
+-e JVM_XMS=128m \
+-e JVM_XMX=128m \
+-p 8848:8848 -d nacos/nacos-server:1.3.2
+```
+
+- 拷贝挂载文件
+
+```java
+
+mkdir -p /mydata/nacos/init.d
+
+docker cp nacos:/home/nacos/init.d/custom.properties /mydata/nacos/init.d
+
+docker stop nacos
+
+docker rm nacos
+
+```
+
+- 重新启动 nacos
+
+```java
+docker run --name nacos --restart=always \
+-e MODE=standalone \
+-e JVM_XMS=128m \
+-e JVM_XMX=128m \
+-v /mydata/nacos/logs:/home/nacos/logs \
+-v /mydata/nacos/init.d/custom.properties:/home/nacos/init.d/custom.properties \
+-p 8848:8848 -d nacos/nacos-server:1.3.2
+```
