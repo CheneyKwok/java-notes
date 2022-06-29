@@ -291,8 +291,10 @@ POST shopping/_update/2
 
 ## 文档删除
 
+### 通过 ID 删除
+
 ```java
-DELETE shopping/_doc/2   // 根据 ID 删除
+DELETE shopping/_doc/2 
 ```
 
 ```java
@@ -309,6 +311,28 @@ DELETE shopping/_doc/2   // 根据 ID 删除
   },
   "_seq_no" : 5,
   "_primary_term" : 1
+}
+```
+
+### 根据查询条件删除
+
+```java
+POST /twitter/_delete_by_query
+{
+  "query": {
+    "match": {
+      "message": "some message"
+    }
+  }
+}
+```
+
+```java
+POST shopping/_delete_by_query
+{
+  "query": {
+    "match_all": {}
+  }
 }
 ```
 
@@ -1324,5 +1348,21 @@ POST _reindex
   "dest": {
     "index": "newbank"
   }
+}
+
+// 删除原索引
+DELETE product
+
+// 设置别名
+POST /_aliases
+{
+  "actions": [
+    {
+      "add": {
+        "index": "product_",
+        "alias": "product"
+      }
+    }
+  ]
 }
 ```
