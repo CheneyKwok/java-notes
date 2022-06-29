@@ -1,5 +1,38 @@
 # Docker 部署中间件
 
+## Mysql
+
+- 启动 Mysql 服务
+
+```java
+docker run -p 3306:3306 --name mysql --restart=always \
+-v /mydata/mysql/log:/var/log/mysql \
+-v /mydata/mysql/data:/var/lib/mysql \
+-v /mydata/mysql/conf:/etc/mysql \
+-e MYSQL_ROOT_PASSWORD=root \
+-d mysql:5.7
+```
+
+- 配置 Mysql 编码
+
+vi /mydata/mysql/conf/my.cnf
+
+```java
+[client]
+default-character-set=utf8
+[mysql]
+default-character-set=utf8
+[mysqld]
+init_connect='SET collation_connection = utf8_unicode_ci'
+init_connect='SET NAMES utf8'
+character-set-server=uf8
+collation-server=utf8_unicode_ci
+skip-character-set-client-handshake
+skip-name-resolve
+```
+
+- 重启 Nysql 服务
+
 ## Elasticsearch
 
 - 修改虚拟内存区域大小，否则会因为过小而无法启动:
@@ -11,9 +44,10 @@ sysctl -w vm.max_map_count=262144
 启动Elasticsearch服务：
 
 ```java
-docker run -p 9200:9200 -p 9300:9300 --name elasticsearch \
+docker run -p 9200:9200 -p 9300:9300 --name elasticsearch --restart=always \
 -e "discovery.type=single-node" \
 -e "cluster.name=elasticsearch" \
+-e ES_JAVA_OPTS="-Xms128m -Xmx256m" \
 -v /mydata/elasticsearch/plugins:/usr/share/elasticsearch/plugins \
 -v /mydata/elasticsearch/data:/usr/share/elasticsearch/data \
 -d elasticsearch:7.6.2
@@ -38,7 +72,7 @@ chmod 777 /mydata/elasticsearch/data/
 ## Kibana
 
 ```java
-docker run --name kibana -p 5601:5601 \
+docker run --name kibana -p 5601:5601 --restart=always \
 -e "elasticsearch.hosts=http://192.168.56.10:9200" \
 -d kibana:7.6.2
 ```
