@@ -2654,7 +2654,7 @@ GET product/_search
       "filter": [
         {
           "term": {
-            "catalogId": "225"
+            "catalogId": "61"
           }
         },
         {
@@ -2668,6 +2668,14 @@ GET product/_search
               "1",
               "2"
             ]
+          }
+        },
+        {
+          "range": {
+            "skuPrice": {
+              "gte": 0,
+              "lte": 10000
+            }
           }
         },
         {
@@ -2706,8 +2714,364 @@ GET product/_search
       }
     }
   ],
-  "size": 20
+  "from": 0,
+  "size": 10,
+  "highlight": {
+    "fields": {
+      "skuTitle": {}
+    },
+    "pre_tags": "<b style='color:red'>",
+    "post_tags": "</b>"
+  },
+  "aggs": {
+    "brand_terms": {
+      "terms": {
+        "field": "brandId",
+        "size": 10
+      },
+      "aggs": {
+        "brandName_terms": {
+          "terms": {
+            "field": "brandName",
+            "size": 1
+          }
+        },
+        "brandImg_terms": {
+          "terms": {
+            "field": "brandImg",
+            "size": 1
+          }
+        }
+      }
+    },
+    "catalog_terms": {
+      "terms": {
+        "field": "catalogId",
+        "size": 10
+      },
+      "aggs": {
+        "catalogName_terms": {
+          "terms": {
+            "field": "catalogName",
+            "size": 1
+          }
+        }
+      }
+    },
+    "attrs_agg": {
+      "nested": {
+        "path": "attrs"
+      },
+      "aggs": {
+        "attrId_terms": {
+          "terms": {
+            "field": "attrs.attrId",
+            "size": 10
+          },
+          "aggs": {
+            "attrName_terms": {
+              "terms": {
+                "field": "attrs.attrName",
+                "size": 1
+              }
+            },
+            "attrValue_terms": {
+              "terms": {
+                "field": "attrs.attrValue",
+                "size": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
+
+GET product/_search
+{
+  "from": 0,
+  "size": 2,
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "skuTitle": {
+              "query": "华为",
+              "operator": "OR",
+              "prefix_length": 0,
+              "max_expansions": 50,
+              "fuzzy_transpositions": true,
+              "lenient": false,
+              "zero_terms_query": "NONE",
+              "auto_generate_synonyms_phrase_query": true,
+              "boost": 1
+            }
+          }
+        }
+      ],
+      "filter": [
+        {
+          "term": {
+            "hasStock": {
+              "value": true,
+              "boost": 1
+            }
+          }
+        },
+        {
+          "range": {
+            "skuPrice": {
+              "from": "0",
+              "to": "10000",
+              "include_lower": true,
+              "include_upper": true,
+              "boost": 1
+            }
+          }
+        },
+        {
+          "nested": {
+            "query": {
+              "bool": {
+                "must": [
+                  {
+                    "term": {
+                      "attrs.attrId": {
+                        "value": "1",
+                        "boost": 1
+                      }
+                    }
+                  },
+                  {
+                    "terms": {
+                      "attrs.attrValue": [
+                        "ABR-AL00"
+                      ],
+                      "boost": 1
+                    }
+                  }
+                ],
+                "adjust_pure_negative": true,
+                "boost": 1
+              }
+            },
+            "path": "attrs",
+            "ignore_unmapped": false,
+            "score_mode": "none",
+            "boost": 1
+          }
+        },
+        {
+          "nested": {
+            "query": {
+              "bool": {
+                "must": [
+                  {
+                    "term": {
+                      "attrs.attrId": {
+                        "value": "2",
+                        "boost": 1
+                      }
+                    }
+                  },
+                  {
+                    "terms": {
+                      "attrs.attrValue": [
+                        "2022"
+                      ],
+                      "boost": 1
+                    }
+                  }
+                ],
+                "adjust_pure_negative": true,
+                "boost": 1
+              }
+            },
+            "path": "attrs",
+            "ignore_unmapped": false,
+            "score_mode": "none",
+            "boost": 1
+          }
+        }
+      ],
+      "adjust_pure_negative": true,
+      "boost": 1
+    }
+  },
+  "sort": [
+    {
+      "saleCount": {
+        "order": "asc"
+      }
+    }
+  ],
+  "aggregations": {
+    "brand_terms": {
+      "terms": {
+        "field": "brandId",
+        "size": 50,
+        "min_doc_count": 1,
+        "shard_min_doc_count": 0,
+        "show_term_doc_count_error": false,
+        "order": [
+          {
+            "_count": "desc"
+          },
+          {
+            "_key": "asc"
+          }
+        ]
+      },
+      "aggregations": {
+        "brandName_terms": {
+          "terms": {
+            "field": "brandName",
+            "size": 1,
+            "min_doc_count": 1,
+            "shard_min_doc_count": 0,
+            "show_term_doc_count_error": false,
+            "order": [
+              {
+                "_count": "desc"
+              },
+              {
+                "_key": "asc"
+              }
+            ]
+          }
+        },
+        "brandImg_terms": {
+          "terms": {
+            "field": "brandImg",
+            "size": 1,
+            "min_doc_count": 1,
+            "shard_min_doc_count": 0,
+            "show_term_doc_count_error": false,
+            "order": [
+              {
+                "_count": "desc"
+              },
+              {
+                "_key": "asc"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "catalog_terms": {
+      "terms": {
+        "field": "catalogId",
+        "size": 20,
+        "min_doc_count": 1,
+        "shard_min_doc_count": 0,
+        "show_term_doc_count_error": false,
+        "order": [
+          {
+            "_count": "desc"
+          },
+          {
+            "_key": "asc"
+          }
+        ]
+      },
+      "aggregations": {
+        "catalogName_terms": {
+          "terms": {
+            "field": "catalogName",
+            "size": 1,
+            "min_doc_count": 1,
+            "shard_min_doc_count": 0,
+            "show_term_doc_count_error": false,
+            "order": [
+              {
+                "_count": "desc"
+              },
+              {
+                "_key": "asc"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "attrs_agg": {
+      "nested": {
+        "path": "attrs"
+      },
+      "aggregations": {
+        "attrId_terms": {
+          "terms": {
+            "field": "attrs.attrId",
+            "size": 20,
+            "min_doc_count": 1,
+            "shard_min_doc_count": 0,
+            "show_term_doc_count_error": false,
+            "order": [
+              {
+                "_count": "desc"
+              },
+              {
+                "_key": "asc"
+              }
+            ]
+          },
+          "aggregations": {
+            "attrName_terms": {
+              "terms": {
+                "field": "attrs.attrName",
+                "size": 1,
+                "min_doc_count": 1,
+                "shard_min_doc_count": 0,
+                "show_term_doc_count_error": false,
+                "order": [
+                  {
+                    "_count": "desc"
+                  },
+                  {
+                    "_key": "asc"
+                  }
+                ]
+              }
+            },
+            "attrValue_terms": {
+              "terms": {
+                "field": "attrs.attrValue",
+                "size": 1,
+                "min_doc_count": 1,
+                "shard_min_doc_count": 0,
+                "show_term_doc_count_error": false,
+                "order": [
+                  {
+                    "_count": "desc"
+                  },
+                  {
+                    "_key": "asc"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "highlight": {
+    "pre_tags": [
+      "<b style='color:red'>"
+    ],
+    "post_tags": [
+      "</b>"
+    ],
+    "fields": {
+      "skuTitle": {}
+    }
+  }
+}
+
+
 
 
 
