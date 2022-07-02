@@ -1,10 +1,8 @@
 package com.gzc.tool;
 
-import com.sun.xml.internal.ws.util.CompletedFuture;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -145,7 +143,7 @@ public class CompletableFutureDemo {
         log.info("task8返回结果：{}", result.get());
 
         // 多任务组合
-        CompletableFuture.allOf(task1, task2);
+        CompletableFuture.allOf(task1, task2).get();
         CompletableFuture<Object> res = CompletableFuture.anyOf(task1, task2);
         log.info("多任务组合返回的结果：{}", res.get().toString());
     }
