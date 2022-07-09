@@ -114,3 +114,14 @@ docker run --name nacos --restart=always \
 -v /mydata/nacos/init.d/custom.properties:/home/nacos/init.d/custom.properties \
 -p 8848:8848 -d nacos/nacos-server:1.3.2
 ```
+
+## RabbitMQ
+
+- 部署启动
+
+```java
+docker run -p 5672:5672 -p 15672:15672 --name rabbitmq \
+-d rabbitmq:3.9-management
+```
+
+- 访问地址查看是否安装成功：http://192.168.56.10:15672 默认账号：guest guest
