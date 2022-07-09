@@ -28,4 +28,78 @@ AMQP 中的消息路由过程和 JMS 存在一些差别，AMQP 中增加了 Exch
   
   topic 交换机通过模式匹配分配消息的路由键属性，将路由键和某个模式进行匹配，此时队列需要绑定到一个模式上。它将路由键和绑定键的字符串切分成单词，这些单次之间用点隔开。它同样也会识别两个通配符："#"(匹配 0 或多个单词)、"*"(匹配一个单词)
 
-  
+## 消息确认机制
+
+保证消息不丢失，可靠抵达，可以使用事务消息，但是性能会下降 250 倍。
+
+为此引入确认机制：
+
+- publisher confirmCallback 确认模式
+- publisher returnCallback 未投递到 queue 退回模式
+- consumer ack 机制
+
+![图 1](../../.image/956b2fde1e279521d43e04d86d455cc951dedbc4f862eabe60797da8a8cd3c4b.png)  
+
+- confirmCallback
+
+开启：
+
+- spring.rabbitmq.publisher-confirm-type: correlated
+
+消息只要被 broker 接受到就会执行 confirmCallback，如果是集群模式，需要所有 broker 接收到才会调用 confirmCallback。
+
+被 broker 接收到只能表示 messge 已达到服务器，并不能保证一定会被投递到目标 queue 中。
+
+```java
+ rabbitTemplate.setConfirmCallback(new RabbitTemplate.ConfirmCallback() {
+     /**
+      *
+      * @param correlationData 对象内部只有一个 id 属性，用来表示当前消息的唯一性
+      * @param ack 对象内部只有一个 id 属性，用来表示当前消息的唯一性
+      * @param cause 表示投递失败的原因。
+      */
+     @Override
+     public void confirm(CorrelationData correlationData, boolean ack, String cause) {
+         log.info("confirm correlationData={}, ack={}, cause={}", correlationData, ack, cause);
+     }
+ });
+```
+
+- returnCallback
+
+开启：
+
+- spring.rabbitmq.publisher-returns: true
+
+- spring.rabbitmq.template.mandatory: true ( 指定消息在没有被队列接受时是否强制退回还是丢弃 )
+
+如果消息未能投递到目标 queue，将调用 returnCallback，可以进行记录。定期的巡检或者自动纠错都需要这些数据
+
+```java
+rabbitTemplate.setReturnCallback(new RabbitTemplate.ReturnCallback() {
+    /**
+     *
+     * @param message the returned message.
+     * @param replyCode the reply code.
+     * @param replyText the reply text.
+     * @param exchange the exchange.
+     * @param routingKey the routing key.
+     */
+    @Override
+    public void returnedMessage(Message message, int replyCode, String replyText, String exchange, String routingKey) {
+        log.info("message={}", message);
+        log.info("replyText={}", replyText);
+        log.info("exchange={}", exchange);
+        log.info("routingKey={}", routingKey);
+    }
+});
+```
+
+tips:
+> spring.rabbitmq.template.mandatory属性的优先级高于spring.rabbitmq.publisher-returns的优先级
+>
+> spring.rabbitmq.template.mandatory属性可能会返回三种值null、false、true
+>
+> spring.rabbitmq.template.mandatory结果为true、false时会忽略掉spring.rabbitmq.publisher-returns属性的值
+>
+> spring.rabbitmq.template.mandatory结果为null（即不配置）时结果由spring.rabbitmq.publisher-returns确定
