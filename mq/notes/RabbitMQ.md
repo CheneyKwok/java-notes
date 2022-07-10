@@ -40,7 +40,7 @@ AMQP 中的消息路由过程和 JMS 存在一些差别，AMQP 中增加了 Exch
 
 ![图 1](../../.image/956b2fde1e279521d43e04d86d455cc951dedbc4f862eabe60797da8a8cd3c4b.png)  
 
-- confirmCallback
+### confirmCallback
 
 开启：
 
@@ -65,7 +65,7 @@ AMQP 中的消息路由过程和 JMS 存在一些差别，AMQP 中增加了 Exch
  });
 ```
 
-- returnCallback
+### returnCallback
 
 开启：
 
@@ -103,3 +103,27 @@ tips:
 > spring.rabbitmq.template.mandatory结果为true、false时会忽略掉spring.rabbitmq.publisher-returns属性的值
 >
 > spring.rabbitmq.template.mandatory结果为null（即不配置）时结果由spring.rabbitmq.publisher-returns确定
+
+### Ack 机制
+
+消费者获取到消息后，默认回复 ack 给 broker，broker 将消息从 queue 中移除。
+
+> 自动 ack 可能会产生消息丢失问题：当 consumer 接受多个消息后，只要进入 channel， 即使未处理完发生宕机，也会全部 ack，即从 broker 中删除。
+
+开启手动 ack：
+
+- spring.rabbitmq.listener.simple.acknowledge-mode: manual
+
+通过 channel 手动 ack
+
+- basicAck：确认 ack 消息，如果 multiple，则 deliveryTag 之前的消息全部确认 ack
+- basicNack： 否认 ack 消息，如果 multiple，则 deliveryTag 之前的消息全部否认 ack，requeue 表示否认之后是否退回 queue，不退回则直接丢弃
+- basicReject： 同 basicNack，但不能批量
+
+```java
+void basicAck(long deliveryTag, boolean multiple)
+void basicNack(long deliveryTag, boolean multiple, boolean requeue)
+void basicReject(long deliveryTag, boolean requeue)
+```
+
+> 如果 consumer 一直没有 ack 或者 nack，broker 会认为此消息正在被处理，则不会投递给别人，但 consumer 断开后，消息不回被 broker 移除，会投递给别人
