@@ -125,3 +125,33 @@ docker run -p 5672:5672 -p 15672:15672 --name rabbitmq \
 ```
 
 - 访问地址查看是否安装成功：http://192.168.56.10:15672 默认账号：guest guest
+
+## Seata
+
+- 首先启动一个用于将 resources 目录文件拷出的临时容器
+
+```java
+docker run --name seata-server -p 8091:8091 -p 7091:7091 seataio/seata-server:1.3.0
+```
+
+- 拷贝 resources 目录
+
+```java
+mkdir -p /mydata/seata
+
+docker cp seata-server:/seata-server/resources /mydata/seata
+
+docker stop seata-server
+
+docker rm seata-server
+```
+
+- 重新部署启动并挂载配置文件
+
+```java
+docker run --name seata-server --restart=always \
+        -p 8091:8091 \
+        -p 7091:7091 \
+        -v /mydata/seata/resources:/seata-server/resources  \
+        seataio/seata-server:1.3.0
+```
