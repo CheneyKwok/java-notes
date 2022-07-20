@@ -131,7 +131,7 @@ docker run -p 5672:5672 -p 15672:15672 --name rabbitmq \
 - 首先启动一个用于将 resources 目录文件拷出的临时容器
 
 ```java
-docker run --name seata-server -p 8091:8091 -p 7091:7091 seataio/seata-server:1.3.0
+docker run --name seata-server -p 8091:8091 -p 7091:7091 -d seataio/seata-server:1.3.0
 ```
 
 - 拷贝 resources 目录
@@ -153,5 +153,11 @@ docker run --name seata-server --restart=always \
         -p 8091:8091 \
         -p 7091:7091 \
         -v /mydata/seata/resources:/seata-server/resources  \
-        seataio/seata-server:1.3.0
+        -d seataio/seata-server:1.3.0
+```
+
+## Zipkin
+
+```java
+docker run --name zipkin -p 9411:9411 -d openzipkin/zipkin
 ```
