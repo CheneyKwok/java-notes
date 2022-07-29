@@ -1,5 +1,73 @@
 # Docker 部署中间件
 
+## Docker
+
+- 卸载旧版本
+
+```java
+yum remove docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-engine
+```
+
+- 安装依赖
+
+```java
+yum install -y yum-utils
+```
+
+- 配置 docker 仓库
+
+```java
+yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+```
+
+- 安装 docker
+
+```java
+
+yum install docker-ce docker-ce-cli containerd.io -y
+// 查询版本
+yum list docker-ce.x86_64 --showduplicates | sort -r
+// 指定版本
+yum install docker-ce-18.06.1.ce-3.el7 docker-ce-cli containerd.io -y
+```
+
+- 配置 docker 开机自启
+
+```java
+systemctl enable docker
+```
+
+- 配置阿里云镜像加速
+
+```java
+mkdir -p /etc/docker
+tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": ["https://kj0ydtqf.mirror.aliyuncs.com"]
+}
+EOF
+systemctl daemon-reload
+systemctl restart docker
+```
+
+- 卸载
+
+```java
+systemctl stop docker
+yum remove docker-ce docker-ce-cli containerd.io
+rm -rf /var/lib/docker
+rm -rf /var/lib/containerd
+```
+
 ## Mysql
 
 - 启动 Mysql 服务
