@@ -170,3 +170,17 @@ kubectl get all
 kubectl delete deployment.apps/tomcat6
 kubectl delete service/tomcat6
 ```
+
+## k8s yaml 基本使用
+
+以测试部署 (--dry-run)的方式生产 yaml (-o yaml)
+
+```java
+kubectl create deployment tomcat6 --image=tomcat:6.0.53-jre8 --drry-run -o yaml > tomcat6.yaml
+```
+
+生成 pod 的 yaml
+
+```java
+kubectl get pod <pod name> -o yaml > mypod.yaml
+```
