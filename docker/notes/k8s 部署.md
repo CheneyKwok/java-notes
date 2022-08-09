@@ -176,11 +176,90 @@ kubectl delete service/tomcat6
 以测试部署 (--dry-run)的方式生产 yaml (-o yaml)
 
 ```java
-kubectl create deployment tomcat6 --image=tomcat:6.0.53-jre8 --drry-run -o yaml > tomcat6.yaml
+kubectl create deployment tomcat6 --image=tomcat:6.0.53-jre8 --dry-run -o yaml > tomcat6.yaml
 ```
 
 生成 pod 的 yaml
 
 ```java
 kubectl get pod <pod name> -o yaml > mypod.yaml
+```
+
+将部署和暴露合并为一个 yaml
+
+```java
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: tomcat6
+  name: tomcat6
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tomcat6
+  template:
+    metadata:
+      labels:
+        app: tomcat6
+    spec:
+      containers:
+      - image: tomcat:6.0.53-jre8
+        name: tomcat
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: tomcat6
+  name: tomcat6
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: tomcat6
+  type: NodePort
+```
+
+## Ingress
+
+Ingress 公开从集群外部到集群内服务的 HTTP 和 HTTPS 路由。 流量路由由 Ingress 资源上定义的规则控制。
+
+Ingress 可为 Service 提供外部可访问的 URL、负载均衡流量、终止 SSL/TLS，以及基于名称的虚拟托管，基于 nginx 实现。
+
+- 部署 Ingress Controller
+
+```java
+kubectl apply -f ingress-controller.yaml
+```
+
+- 创建 一个用于访问 tomcat 的 ingress 规则
+
+```java
+vi ingress-tomcat6.yaml
+```
+
+```java
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: web
+spec:
+  rules: 
+  - host: tomcat6.atguigu.com
+    http:
+      paths: 
+        - backend:
+           serviceName: tomcat6
+           servicePort: 80
+```
+
+应用规则
+
+```java
+vi ingress-tomcat6.yaml
 ```
