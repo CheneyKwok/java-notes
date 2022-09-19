@@ -44,3 +44,55 @@ BeanFactory 不会做的事
 2. 不会主动添加 Bean 后置处理器
 3. 不会主动初始化单例
 4. 不会解析 ${}、#{}
+
+## Scope
+
+在当前版本的 Spring 和 Spring Boot 程序中，支持五种 Scope
+
+- singleton，容器启动时创建（未设置延迟），容器关闭时销毁
+- prototype，每次使用时创建，不会自动销毁，需要调用 DefaultListableBeanFactory.destroyBean(bean) 销毁
+- request，每次请求用到此 bean 时创建，请求结束时销毁
+- session，每个会话用到此 bean 时创建，会话结束时销毁
+- application，web 容器用到此 bean 时创建，容器停止时销毁
+
+但要注意，如果在 singleton 注入其它 scope 都会有问题，解决方法有
+
+- @Lazy
+- @Scope(proxyMode = ScopedProxyMode.TARGET_CLASS)
+- 借助 ObjectFactory
+- 借助 ApplicationContext.getBean
+
+```java
+@Component
+public class E {
+
+    @Lazy
+    @Autowired
+    private F1 f1;
+
+    @Autowired
+    private F2 f2;
+
+    @Autowired
+    private ObjectFactory<F3> f3;
+
+    @Autowired
+    private ApplicationContext context;
+
+    public F1 getF1() {
+        return f1;
+    }
+
+    public F2 getF2() {
+        return f2;
+    }
+
+    public F3 getF3() {
+        return f3.getObject();
+    }
+
+    public F4 getF4() {
+        return context.getBean(F4.class);
+    }
+}
+```
