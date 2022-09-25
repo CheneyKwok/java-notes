@@ -1,4 +1,4 @@
-package github.cheneykwok.spring.mvc.a20;
+package github.cheneykwok.spring.web.a20;
 
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.ModelAndView;

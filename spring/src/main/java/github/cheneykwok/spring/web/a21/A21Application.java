@@ -1,6 +1,5 @@
-package github.cheneykwok.spring.mvc.a21;
+package github.cheneykwok.spring.web.a21;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;

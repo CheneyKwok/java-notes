@@ -1,12 +1,11 @@
-package github.cheneykwok.spring.mvc.a20;
-
+package github.cheneykwok.spring.web.a20;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target({ElementType.PARAMETER})
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Token {
+public @interface Yml {
 }
