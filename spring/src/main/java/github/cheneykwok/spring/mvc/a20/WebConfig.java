@@ -10,10 +10,10 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.web.servlet.DispatcherServlet;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @ComponentScan
@@ -51,7 +51,7 @@ public class WebConfig {
     }
 
     @Bean
-    public MyRequestMappingHandlerAdapter myRequestMappingHandlerAdapter() {
+    public RequestMappingHandlerAdapter myRequestMappingHandlerAdapter() {
         MyRequestMappingHandlerAdapter handlerAdapter = new MyRequestMappingHandlerAdapter();
         handlerAdapter.setArgumentResolvers(Arrays.asList(new TokenArgumentResolver()));
         handlerAdapter.setReturnValueHandlers(Arrays.asList(new YmlMethodReturnResolver()));
