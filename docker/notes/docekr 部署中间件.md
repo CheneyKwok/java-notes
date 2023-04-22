@@ -37,7 +37,7 @@ yum install docker-ce docker-ce-cli containerd.io -y
 // 查询版本
 yum list docker-ce.x86_64 --showduplicates | sort -r
 // 指定版本
-yum install docker-ce-18.06.1.ce-3.el7 docker-ce-cli containerd.io -y
+yum -y install docker-ce-20.10.9-3.el7 docker-ce-cli-20.10.9-3.el7
 ```
 
 - 配置 docker 开机自启
@@ -52,7 +52,7 @@ systemctl enable docker
 mkdir -p /etc/docker
 tee /etc/docker/daemon.json <<-'EOF'
 {
-  "registry-mirrors": ["https://kj0ydtqf.mirror.aliyuncs.com"]
+ "registry-mirrors": ["https://registry.cn-hangzhou.aliyuncs.com"]
 }
 EOF
 systemctl daemon-reload
@@ -66,6 +66,22 @@ systemctl stop docker
 yum remove docker-ce docker-ce-cli containerd.io
 rm -rf /var/lib/docker
 rm -rf /var/lib/containerd
+```
+
+- docker 设置代理
+
+```java
+vi /etc/systemd/system/multi-user.target.wants/docker.service
+
+// 在[service]下面加入代理的配置
+
+Environment=HTTP_PROXY=http://192.168.3.27:1090
+Environment=HTTPS_PROXY=http://192.168.3.27:1090
+Environment=NO_PROXY=localhost,127.0.0.1
+
+// 重启
+systemctl daemon-reload
+systemctl restart docker
 ```
 
 ## Mysql
@@ -101,6 +117,88 @@ skip-name-resolve
 
 - 重启 Nysql 服务
 
+### mysql 主从
+  
+```java
+// master 配置
+
+[client]
+default-character-set=utf8
+[mysql]
+default-character-set=utf8
+[mysqld]
+init_connect='SET collation_connection = utf8_unicode_ci'
+init_connect='SET NAMES utf8'
+character-set-server=utf8
+collation-server=utf8_unicode_ci
+skip-character-set-client-handshake
+skip-name-resolve
+
+server_id=1
+log-bin=mysql-bin
+read-only=0
+binlog-do-db=gulimall_ums
+binlog-do-db=gulimall_pms
+binlog-do-db=gulimall_oms
+binlog-do-db=gulimall_sms
+binlog-do-db=gulimall_wms
+binlog-do-db=gulimall_admin
+replicate-ignore-db=mysql
+replicate-ignore-db=sys
+replicate-ignore-db=information_schema
+replicate-ignore-db=performance_schema
+
+// slaver 配置
+
+[client]
+default-character-set=utf8
+[mysql]
+default-character-set=utf8
+[mysqld]
+init_connect='SET collation_connection = utf8_unicode_ci'
+init_connect='SET NAMES utf8'
+character-set-server=utf8
+collation-server=utf8_unicode_ci
+skip-character-set-client-handshake
+skip-name-resolve
+
+server_id=2
+log-bin=mysql-bin
+read-only=1
+binlog-do-db=gulimall_ums
+binlog-do-db=gulimall_pms
+binlog-do-db=gulimall_oms
+binlog-do-db=gulimall_sms
+binlog-do-db=gulimall_wms
+binlog-do-db=gulimall_admin
+replicate-ignore-db=mysql
+replicate-ignore-db=sys
+replicate-ignore-db=information_schema
+replicate-ignore-db=performance_schema
+```
+
+- 为 master 授权用户来他的同步数据
+
+```java
+// 添加用来同步的用户
+GRANT REPLICATION SLAVE ON *.* to 'backup'@'%' identified by '123456';
+//查看 master 状态
+show master status;
+```
+
+- 配置 slaver 同步 master 数据
+
+```java
+// 设置主库连接
+change master to master_host='gulimall-mysql-master.gulimall',master_user='backup',master_password='123456',master_log_file='mysql-bin.000003',master_log_pos=439,master_port=3306;
+
+// 启动从库同步
+start slave;
+
+//查看从库状态
+show slave status\G;
+```
+
 ## Elasticsearch
 
 - 修改虚拟内存区域大小，否则会因为过小而无法启动:
@@ -118,6 +216,7 @@ docker run -p 9200:9200 -p 9300:9300 --name elasticsearch --restart=always \
 -e ES_JAVA_OPTS="-Xms128m -Xmx256m" \
 -v /mydata/elasticsearch/plugins:/usr/share/elasticsearch/plugins \
 -v /mydata/elasticsearch/data:/usr/share/elasticsearch/data \
+-v /mydata/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml \
 -d elasticsearch:7.6.2
 ```
 
@@ -141,7 +240,7 @@ chmod 777 /mydata/elasticsearch/data/
 
 ```java
 docker run --name kibana -p 5601:5601 --restart=always \
--e "elasticsearch.hosts=http://192.168.56.10:9200" \
+-e ELASTICSEARCH_HOSTS=http://192.168.56.105:9200 \
 -d kibana:7.6.2
 ```
 

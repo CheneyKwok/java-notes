@@ -6,7 +6,7 @@ non-blocking io 非阻塞 IO
 
 ### Channel & Buffer
 
-channel 有点类似于stream，它就是读写数据的双向通道，可以从 channel 将数据读入 buffer，也可以从 buffer 将数据读入 channel，而之前的 stream 要么是输入，要么是输出，channel 比 straam 更为底层
+channel 有点类似于stream，它就是读写数据的双向通道，可以从 channel 将数据读入 buffer，也可以从 buffer 将数据写入 channel，而之前的 stream 要么是输入，要么是输出，channel 比 stream 更为底层
 
 ![](../../.image/20210912143843.png)
 

@@ -83,6 +83,7 @@ rules:
       - watch
   - apiGroups:
       - "extensions"
+      - "networking.k8s.io"
     resources:
       - ingresses
     verbs:
@@ -211,7 +212,7 @@ spec:
       serviceAccountName: nginx-ingress-serviceaccount
       containers:
         - name: nginx-ingress-controller
-          image: siriuszg/nginx-ingress-controller:0.20.0
+          image: siriuszg/nginx-ingress-controller:v0.35.0
           args:
             - /nginx-ingress-controller
             - --configmap=$(POD_NAMESPACE)/nginx-configuration
@@ -227,7 +228,7 @@ spec:
               add:
                 - NET_BIND_SERVICE
             # www-data -> 33
-            runAsUser: 33
+            runAsUser: 101
           env:
             - name: POD_NAME
               valueFrom:

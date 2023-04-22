@@ -7,10 +7,11 @@ public class TurnModeDemo {
 
     public static void main(String[] args) {
 
-        WaitNotify syncWaitNotify = new WaitNotify(1, 5);
-        new Thread(() -> syncWaitNotify.print("a", 1, 2)).start();
-        new Thread(() -> syncWaitNotify.print("b", 2, 3)).start();
-        new Thread(() -> syncWaitNotify.print("c", 3, 2)).start();
+        WaitNotify wt = new WaitNotify(1, 3);
+        new Thread(() -> wt.print("a", 1, 2)).start();
+        new Thread(() -> wt.print("b", 2, 3)).start();
+        new Thread(() -> wt.print("c", 3, 1)).start();
+
 
     }
 }
@@ -22,36 +23,30 @@ public class TurnModeDemo {
  *   c          3            1
  */
 class WaitNotify{
+    int flag;
+    int number;
 
-    /**
-     * 等待标记
-     */
-    private int flag;
-
-    /**
-     * 循环次数
-     */
-    private int loopNumber;
-
-    public WaitNotify(int flag, int loopNumber) {
+    public WaitNotify(int flag, int number) {
         this.flag = flag;
-        this.loopNumber = loopNumber;
+        this.number = number;
     }
 
-    public void print(String str, int waitFlag, int nextFlag) {
-        for (int i = 0; i < loopNumber; i++) {
+    public void print(String s, int tFlag, int nextFlag) {
+        for (int i = 0; i < number; i++) {
             synchronized (this) {
-                while (waitFlag != flag) {
+                while (tFlag != flag) {
                     try {
-                        this.wait();
+                        wait();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                 }
-                System.out.print(str);
-                flag = nextFlag;
-                this.notifyAll();
+                System.out.println(s);
+                this.flag = nextFlag;
+                notifyAll();
             }
+
         }
     }
+
 }

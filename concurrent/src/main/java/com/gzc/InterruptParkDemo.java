@@ -14,7 +14,8 @@ public class InterruptParkDemo {
             LockSupport.park();
             log.info("un park......");
             log.info("打断状态：{}", Thread.currentThread().isInterrupted());
-//            log.info("打断状态：{}", Thread.interrupted());
+            // 先返回打断标记，再清楚打断标记
+            log.info("打断状态：{}", Thread.interrupted());
             LockSupport.park();
             log.info("un park......");
         });

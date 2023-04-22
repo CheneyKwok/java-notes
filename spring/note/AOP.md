@@ -228,5 +228,5 @@ public class CglibProxyDemo {
 
 1. 通过 @EnableAspectJAutoProxy 导入 AspectJAutoProxyRegistrar.class
 2. AspectJAutoProxyRegistrar 向容器中注册一个 AnnotationAwareAspectJAutoProxyCreator BeanPostProcessor
-3. AnnotationAwareAspectJAutoProxyCreator 会在 Bean 的实例化前解析所有切面 Bean，收集所有的 advice 通知，构建 advisor 切面类，在 Bean 的实例化后会去获取与该 Bean 相匹配的 advisor 集合，如果不为空则生成 AOP 代理类
+3. AnnotationAwareAspectJAutoProxyCreator 会在 Bean 的实例化前解析所有切面 Bean，收集所有的 advice 通知，构建 advisor 切面类，在 Bean 的初始化后会去获取与该 Bean 相匹配的 advisor 集合，如果不为空则生成 AOP 代理类
 4. 在 method invoke 时获取该方法的 advisor 集合并其中的 advice 通知统一适配为 MethodInterceptor 接口的拦截器组合，即一组拦截链，并判断如果不为空则创建 MethodInvocation 去执行拦截链，为空
