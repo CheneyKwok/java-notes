@@ -14,16 +14,19 @@ import java.util.Map;
  * @date 2023-05-26
  */
 @Slf4j
-public class PrefixProducerInterceptor implements ProducerInterceptor<String, String> {
+public class PrefixProducerInterceptor implements ProducerInterceptor<String, Company> {
 
     private volatile int sendSuccess = 0;
     private volatile int sendFailure = 0;
+    private final String prefix = "prefix-";
 
     @Override
-    public ProducerRecord<String, String> onSend(ProducerRecord<String, String> record) {
-        String modifyValue = "prefix" + record.value();
+    public ProducerRecord<String, Company> onSend(ProducerRecord<String, Company> record) {
+        Company company = record.value();
+        company.setName(prefix + company.getName());
+        company.setAddress(prefix + company.getAddress());
 
-        return new ProducerRecord<>(record.topic(), record.partition(), record.timestamp(), record.key(), modifyValue, record.headers());
+        return new ProducerRecord<>(record.topic(), record.partition(), record.timestamp(), record.key(), company, record.headers());
     }
 
     @Override

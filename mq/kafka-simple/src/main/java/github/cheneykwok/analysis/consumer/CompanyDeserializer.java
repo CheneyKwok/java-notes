@@ -37,7 +37,9 @@ public class CompanyDeserializer implements Deserializer<Company> {
             String address = new String(addressBytes, StandardCharsets.UTF_8);
             return new Company(name, address);
         } catch (Exception e) {
-            throw new SerializationException("Error occur when deserializing");
+            log.error("topic: {} deserialize failed: {}", topic, e.getMessage());
+            return null;
+//            throw new SerializationException("Error occur when deserializing");
         }
 
     }

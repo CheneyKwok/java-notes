@@ -1,6 +1,7 @@
 package github.cheneykwok.analysis.producer;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Serializer;
 
 import java.nio.ByteBuffer;
@@ -17,6 +18,9 @@ public class CompanySerializer implements Serializer<Company> {
 
     @Override
     public byte[] serialize(String topic, Company data) {
+        if (data == null) {
+            throw new SerializationException("failed serializer, data is null");
+        }
         byte[] name, address;
         try {
             if (data.getName() != null) {
@@ -30,14 +34,15 @@ public class CompanySerializer implements Serializer<Company> {
             } else {
                 address = new byte[0];
             }
+
             ByteBuffer buffer = ByteBuffer.allocate(8 + name.length + address.length);
-            buffer.putInt(4);
+            buffer.putInt(name.length);
             buffer.put(name);
-            buffer.putInt(4);
+            buffer.putInt(address.length);
             buffer.put(address);
             return buffer.array();
         } catch (Exception e) {
-            log.info(e.getMessage());
+            log.info("CompanySerializer 异常：{}", e.getMessage());
             return new byte[0];
         }
     }
