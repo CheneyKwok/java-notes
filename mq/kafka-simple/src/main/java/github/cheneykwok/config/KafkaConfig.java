@@ -9,5 +9,6 @@ package github.cheneykwok.config;
 public interface KafkaConfig {
 
 
-    String BROKER_LIST = "192.168.18.101:9092,192.168.18.102:9092,192.168.18.103:9092";
+//    String BROKER_LIST = "192.168.18.101:9092,192.168.18.102:9092,192.168.18.103:9092";
+    String BROKER_LIST = "192.168.10.101:9092,192.168.10.102:9092,192.168.10.103:9092";
 }

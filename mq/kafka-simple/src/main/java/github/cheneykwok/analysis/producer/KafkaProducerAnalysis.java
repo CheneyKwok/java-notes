@@ -38,15 +38,17 @@ public class KafkaProducerAnalysis {
         try (KafkaProducer<String, Object> producer = new KafkaProducer<>(props)) {
             Company company = new Company("阿里", "杭州");
             ProducerRecord<String, Object> record = new ProducerRecord<>(TOPIC, company);
-            producer.send(record, (metadata, exception) -> {
-                if (exception != null) {
-                    log.info("send failed, {}", exception.getMessage());
-                }
-                if (metadata != null) {
-                    log.info("topic: {}, partition: {}, offset: {}", metadata.topic(), metadata.partition(), metadata.offset());
-                }
+            for (int i = 0; i < 10; i++) {
+                producer.send(record, (metadata, exception) -> {
+                    if (exception != null) {
+                        log.info("send failed, {}", exception.getMessage());
+                    }
+                    if (metadata != null) {
+                        log.info("topic: {}, partition: {}, offset: {}", metadata.topic(), metadata.partition(), metadata.offset());
+                    }
 
-            });
+                });
+            }
         } catch (Exception e) {
             log.info(e.getMessage());
         }
