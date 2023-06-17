@@ -1,6 +1,6 @@
 package github.cheneykwok.spring.aop.a18;
 
-import github.cheneykwok.spring.bean.a08.sub.E;
+import github.cheneykwok.spring.aop.a18.Advisor.PreCheck;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.*;
 import org.springframework.aop.Advisor;
@@ -56,7 +56,9 @@ public class AspectJToAdvisor {
     }
 
     static class Target {
-        public void foo() {
+
+        @PreCheck("#a == 1")
+        public void foo(Integer a) {
             System.out.println("target foo");
         }
     }
