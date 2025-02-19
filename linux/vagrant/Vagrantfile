@@ -1,0 +1,54 @@
+vm_list = [
+  { # hash map
+    "name" => "k8s-master",
+    "cpu" => "4",
+    "mem" => "4096",
+    "ip_addr" => "192.168.56.101"
+  },
+  {
+    "name" => "k8s-node-1",
+    "cpu" => "4",
+    "mem" => "4096",
+    "ip_addr" => "192.168.56.102"
+  },
+  {
+    "name" => "k8s-node-4",
+    "cpu" => "4",
+    "mem" => "4096",
+    "ip_addr" => "192.168.56.103"
+  }
+]
+
+Vagrant.configure(2) do |config|
+
+   config.vm.box = "centos7"
+   config.vm.box_url = "D:/Environment/Vagrant/CentOS-7-x86_64-Vagrant-2004_01.VirtualBox.box"
+   
+   # 设置系统盘容量
+   config.vm.disk :disk, size: "40GB", primary: true
+
+   vm_list.each do |item|
+        config.vm.define item["name"] do |node|
+
+          node.vm.provider "virtualbox" do |vbox|
+            vbox.name = item["name"];  # 虚拟机名称
+            vbox.memory = item["mem"]; # 内存
+            vbox.cpus = item["cpu"];   # CPU
+            vbox.customize ["modifyvm", :id, "--nictype1", "virtio"];# 优化网络性能
+            vbox.customize ["modifyvm", :id, "--ioapic", "on"]; # 启用多核中断支持 
+          end
+
+          # 设置hostanme
+          node.vm.hostname = item["name"]
+          # 设置 host-only 第二网卡仅宿主机访问（vagrant 第一网卡默认 nat 网络地址转换，保证虚拟机可连通网络），固定IP
+          node.vm.network "private_network", ip: item["ip_addr"]
+          # 修改vagrant用户密码
+          node.vm.provision "shell", inline: "echo vagrant:g123 | sudo chpasswd"
+          # 启用ssh密码认证
+          node.vm.provision "shell", path: "bootstrap.sh"
+            
+        end
+
+    end
+
+end
